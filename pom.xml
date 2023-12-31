@@ -14,11 +14,28 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>tommyjs-repo</id>
+            <url>https://repo.tommyjs.dev/repository/maven-releases/</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>com.discord4j</groupId>
             <artifactId>discord4j-core</artifactId>
             <version>3.2.6</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.tommyjs</groupId>
+            <artifactId>futur-api</artifactId>
+            <version>1.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.tommyjs</groupId>
+            <artifactId>futur-standalone</artifactId>
+            <version>1.2.0</version>
         </dependency>
     </dependencies>
 
