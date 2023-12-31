@@ -1,4 +1,4 @@
-package dev.glaeos;
+package dev.glaeos.demonaday;
 
 public class Main {
     public static void main(String[] args) {
