@@ -1,6 +1,6 @@
 package dev.glaeos.demonaday.messages;
 
-import dev.glaeos.demonaday.demons.RecordManager;
+import dev.glaeos.demonaday.demons.PlayerManager;
 import dev.glaeos.demonaday.responses.DemonLogFailureReason;
 import dev.glaeos.demonaday.responses.DemonLogResponse;
 import discord4j.core.object.entity.Message;
@@ -23,11 +23,11 @@ public class DemonLogHandler implements MessageHandler {
 
     private static final long CHANNEL = 1191093950803624128L;
 
-    private final RecordManager manager;
+    private final PlayerManager manager;
 
-    public DemonLogHandler(@NotNull RecordManager recordManager) {
-        checkNotNull(recordManager);
-        manager = recordManager;
+    public DemonLogHandler(@NotNull PlayerManager playerManager) {
+        checkNotNull(playerManager);
+        manager = playerManager;
     }
 
     public long getChannelId() {
