@@ -6,7 +6,10 @@ import dev.glaeos.demonaday.responses.DemonLogResponse;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.MessageChannel;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
@@ -15,6 +18,8 @@ import java.time.ZoneId;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class DemonLogHandler implements MessageHandler {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DemonLogHandler.class);
 
     private static final long CHANNEL = 1191093950803624128L;
 
@@ -29,7 +34,10 @@ public class DemonLogHandler implements MessageHandler {
         return CHANNEL;
     }
 
-    public Publisher<?> handle(@NotNull MessageChannel channel, @NotNull Message message) {
+    public Publisher<?> handle(@Nullable MessageChannel channel, @NotNull Message message) {
+        if (channel == null) {
+            return Mono.empty();
+        }
         if (message.getAuthor().isEmpty()) {
             return Mono.empty();
         }
