@@ -7,28 +7,26 @@ import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.ReactiveEventAdapter;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.Message;
-import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.gateway.intent.Intent;
 import discord4j.gateway.intent.IntentSet;
 import discord4j.rest.interaction.GuildCommandRegistrar;
 import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class DiscordBot {
 
-    private static final long DEMON_LOG_CHANNEL = 1191093950803624128L;
+    private static final Logger LOGGER = LoggerFactory.getLogger(DiscordBot.class);
 
     protected DiscordBot(@NotNull String token, long guildId,
                          @NotNull List<Command> commands, @NotNull List<MessageHandler> messageHandlers) {
@@ -36,7 +34,9 @@ public class DiscordBot {
 
         DiscordClient client = DiscordClient.create(token);
         client.gateway().setEnabledIntents(IntentSet.of(Intent.MESSAGE_CONTENT));
-        GatewayDiscordClient gateway = client.login().block();
+        GatewayDiscordClient gateway = client.gateway().withEventDispatcher(d -> d.on(ReadyEvent.class)
+                .doOnNext(event -> LOGGER.info("Logged in: " + event.getShardInfo())))
+                .login().block();
         assert gateway != null;
 
         Map<Long, MessageHandler> handlers = new HashMap<>();
@@ -52,7 +52,7 @@ public class DiscordBot {
 
         GuildCommandRegistrar.create(gateway.getRestClient(), commands.stream().map(Command::getAppCommand).toList())
                 .registerCommands(Snowflake.of(guildId))
-                .doOnError(err -> System.err.println("Failed to create guild command: " + err))
+                .doOnError(err -> LOGGER.error("Failed to create guild command: " + err))
                 .onErrorResume(err -> Mono.empty())
                 .blockLast();
 
