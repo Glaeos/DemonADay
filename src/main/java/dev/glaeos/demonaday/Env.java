@@ -11,10 +11,9 @@ public class Env {
     public static final long GUILD;
 
     static {
-        File f = new File(".env");
         Scanner reader;
         try {
-            reader = new Scanner(f);
+            reader = new Scanner(new File(".env"));
         } catch (FileNotFoundException err) {
             throw new RuntimeException(err);
         }
