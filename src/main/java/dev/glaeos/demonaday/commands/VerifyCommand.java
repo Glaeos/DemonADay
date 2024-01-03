@@ -9,6 +9,7 @@ import dev.glaeos.demonaday.demons.PlayerManager;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
+import discord4j.core.object.entity.User;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import org.slf4j.Logger;
@@ -31,8 +32,8 @@ public class VerifyCommand implements Command {
             .description("ADMIN ONLY - Verifies a demon completion.")
             .addOption(ApplicationCommandOptionData.builder()
                     .name("user")
-                    .description("The username of the player whose record is being verified.")
-                    .type(ApplicationCommandOption.Type.STRING.getValue())
+                    .description("The user of the player whose record is being verified.")
+                    .type(ApplicationCommandOption.Type.USER.getValue())
                     .required(true)
                     .build())
             .addOption(ApplicationCommandOptionData.builder()
@@ -55,7 +56,7 @@ public class VerifyCommand implements Command {
     }
 
     public void handle(ChatInputInteractionEvent interaction) {
-        interaction.deferReply().withEphemeral(true).subscribe();
+        //interaction.deferReply().withEphemeral(true).subscribe();
         try {
             long userId = interaction.getInteraction().getUser().getId().asLong();
             boolean authenticated = false;
@@ -66,92 +67,81 @@ public class VerifyCommand implements Command {
                 }
             }
             if (!authenticated) {
-                interaction.reply("**You do not have permission to use this command.**").withEphemeral(true);
+                interaction.reply("**You do not have permission to use this command.**").withEphemeral(true).subscribe();
                 return;
             }
 
             if (interaction.getOption("user").isEmpty()) {
-                interaction.reply("Missing user.").withEphemeral(true);
+                interaction.reply("Missing user.").withEphemeral(true).subscribe();
                 return;
             }
             if (interaction.getOption("user").get().getValue().isEmpty()) {
-                interaction.reply("Missing user.").withEphemeral(true);
+                interaction.reply("Missing user.").withEphemeral(true).subscribe();
                 return;
             }
-            String username = interaction.getOption("user").get().getValue().get().asString();
-            interaction.getClient().getGuildMembers(Snowflake.of(Env.GUILD)).doOnEach(member -> {
-                if (!member.hasValue()) {
-                    interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.");
-                    return;
-                }
-                if (member.get().getUsername().equals(username)) {
-                    try {
-                        playerManager.acquire();
-                        if (!playerManager.hasPlayer(userId)) {
-                            playerManager.release();
-                            interaction.reply("Could not find player with given username.").withEphemeral(true);
-                            return;
-                        }
-                        Player player = playerManager.getPlayer(userId);
-                        playerManager.release();
+            User commandUser = interaction.getOption("user").get().getValue().get().asUser().block();
+            if (commandUser == null) {
+                interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
+                return;
+            }
+            playerManager.acquire();
+            if (!playerManager.hasPlayer(commandUser.getId().asLong())) {
+                playerManager.release();
+                interaction.reply("Could not find player with given username.").withEphemeral(true).subscribe();
+                return;
+            }
+            Player player = playerManager.getPlayer(commandUser.getId().asLong());
+            playerManager.release();
 
-                        if (interaction.getOption("level").isEmpty()) {
-                            interaction.reply("Missing level ID.").withEphemeral(true);
-                            return;
-                        }
-                        if (interaction.getOption("level").get().getValue().isEmpty()) {
-                            interaction.reply("Missing level ID.").withEphemeral(true);
-                            return;
-                        }
-                        int levelId = (int) interaction.getOption("level").get().getValue().get().asLong();
-                        if (levelId < 1 || levelId > 120000000) {
-                            interaction.reply("Invalid level ID. Should be between 1 and 120 million inclusive.").withEphemeral(true);
-                            return;
-                        }
+            if (interaction.getOption("level").isEmpty()) {
+                interaction.reply("Missing level ID.").withEphemeral(true).subscribe();
+                return;
+            }
+            if (interaction.getOption("level").get().getValue().isEmpty()) {
+                interaction.reply("Missing level ID.").withEphemeral(true).subscribe();
+                return;
+            }
+            int levelId = (int) interaction.getOption("level").get().getValue().get().asLong();
+            if (levelId < 1 || levelId > 120000000) {
+                interaction.reply("Invalid level ID. Should be between 1 and 120 million inclusive.").withEphemeral(true).subscribe();
+                return;
+            }
 
-                        if (interaction.getOption("difficulty").isEmpty()) {
-                            interaction.reply("Missing difficulty.").withEphemeral(true);
-                            return;
-                        }
-                        if (interaction.getOption("difficulty").get().getValue().isEmpty()) {
-                            interaction.reply("Missing difficulty.").withEphemeral(true);
-                            return;
-                        }
-                        String difficultyString = interaction.getOption("difficulty").get().getValue().get().asString().toUpperCase();
-                        if (!difficultyString.equals("EASY") && !difficultyString.equals("MEDIUM") && !difficultyString.equals("HARD") && !difficultyString.equals("INSANE") && !difficultyString.equals("EXTREME")) {
-                            interaction.reply("Invalid difficulty. Should be one of: 'Easy', 'Medium', 'Hard', 'Insane' or 'Extreme'.").withEphemeral(true);
-                            return;
-                        }
-                        DemonDifficulty difficulty = DemonDifficulty.valueOf(difficultyString);
+            if (interaction.getOption("difficulty").isEmpty()) {
+                interaction.reply("Missing difficulty.").withEphemeral(true).subscribe();
+                return;
+            }
+            if (interaction.getOption("difficulty").get().getValue().isEmpty()) {
+                interaction.reply("Missing difficulty.").withEphemeral(true).subscribe();
+                return;
+            }
+            String difficultyString = interaction.getOption("difficulty").get().getValue().get().asString().toUpperCase();
+            if (!difficultyString.equals("EASY") && !difficultyString.equals("MEDIUM") && !difficultyString.equals("HARD") && !difficultyString.equals("INSANE") && !difficultyString.equals("EXTREME")) {
+                interaction.reply("Invalid difficulty. Should be one of: 'Easy', 'Medium', 'Hard', 'Insane' or 'Extreme'.").withEphemeral(true).subscribe();
+                return;
+            }
+            DemonDifficulty difficulty = DemonDifficulty.valueOf(difficultyString);
 
-                        player.acquire();
-                        if (!player.hasCompleted(levelId)) {
-                            player.release();
-                            interaction.reply("Player has not logged a completion with the given level ID.").withEphemeral(true);
-                            return;
-                        }
-                        DemonCompletion completion = player.getCompletion(levelId);
-                        if (completion.isVerified()) {
-                            player.release();
-                            interaction.reply("Player's completion is already verified.").withEphemeral(true);
-                            return;
-                        }
-                        completion.setDifficulty(difficulty);
-                        completion.verify();
-                        player.release();
-                        interaction.reply("Player's record was successfully verified.");
-                    } catch (Exception err) {
-                        LOGGER.error("Verify command encountered exception: " + err);
-                        interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.");
-                    }
-                }
-            }).doAfterTerminate(() -> {
-                interaction.reply("User with username not found.");
-            }).subscribe();
+            player.acquire();
+            if (!player.hasCompleted(levelId)) {
+                player.release();
+                interaction.reply("Player has not logged a completion with the given level ID.").withEphemeral(true).subscribe();
+                return;
+            }
+            DemonCompletion completion = player.getCompletion(levelId);
+            if (completion.isVerified()) {
+                player.release();
+                interaction.reply("Player's completion is already verified.").withEphemeral(true).subscribe();
+                return;
+            }
+            completion.setDifficulty(difficulty);
+            completion.verify();
+            player.release();
+            interaction.reply("Player's record was successfully verified.").subscribe();
 
         } catch (Exception err) {
             LOGGER.error("Verify command encountered exception: " + err);
-            interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.");
+            interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
         }
     }
 
