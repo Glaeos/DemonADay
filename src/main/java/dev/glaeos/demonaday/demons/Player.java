@@ -98,9 +98,6 @@ public class Player {
         if (disabled) {
             throw new IllegalStateException("cannot add completion to disabled player");
         }
-        if (completion.getUserId() != userId) {
-            throw new IllegalArgumentException("cannot add completion by a different player");
-        }
         if (hasCompleted(completion.getLevelId())) {
             throw new IllegalArgumentException("cannot add completion as player has already beaten level");
         }

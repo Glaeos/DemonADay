@@ -106,7 +106,7 @@ public class DemonLogHandler implements MessageHandler {
                     player.getLock().unlock();
                     return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.ALREADY_SUBMITTED_TODAY));
                 }
-                player.addCompletion(new DemonCompletion(userId, (short) time.getDayOfYear(), levelId, null, false));
+                player.addCompletion(new DemonCompletion((short) time.getDayOfYear(), levelId, null, false));
             } finally {
                 player.getLock().unlock();
             }

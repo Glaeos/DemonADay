@@ -9,6 +9,6 @@ public interface Command {
 
     ApplicationCommandRequest getAppCommand();
 
-    Function<ChatInputInteractionEvent, String> getCommandHandler();
+    void handle(ChatInputInteractionEvent interaction);
 
 }

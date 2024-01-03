@@ -7,33 +7,23 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class DemonCompletion {
 
-    private final long userId;
-
     private final short dayOfYear;
 
     private final int levelId;
 
-    private final @Nullable DemonDifficulty difficulty;
+    private @Nullable DemonDifficulty difficulty;
 
     private boolean verified;
 
-    public DemonCompletion(long userId, short dayOfYear, int levelId, @Nullable DemonDifficulty difficulty, boolean verified) {
-        if (userId < 1) {
-            throw new IllegalArgumentException("user ID cannot be < 1");
-        }
+    public DemonCompletion(short dayOfYear, int levelId, @Nullable DemonDifficulty difficulty, boolean verified) {
         if (dayOfYear < 1 || dayOfYear > 366) {
             throw new IllegalArgumentException("day of year cannot be < 1 or > 366");
         }
 
-        this.userId = userId;
         this.dayOfYear = dayOfYear;
         this.levelId = levelId;
         this.difficulty = difficulty;
         this.verified = verified;
-    }
-
-    public long getUserId() {
-        return userId;
     }
 
     public short getDayOfYear() {
@@ -46,6 +36,11 @@ public class DemonCompletion {
 
     public @Nullable DemonDifficulty getDifficulty() {
         return difficulty;
+    }
+
+    public void setDifficulty(@NotNull DemonDifficulty difficulty) {
+        checkNotNull(difficulty);
+        this.difficulty = difficulty;
     }
 
     public boolean isVerified() {

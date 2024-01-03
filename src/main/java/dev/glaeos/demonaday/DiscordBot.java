@@ -65,7 +65,7 @@ public class DiscordBot {
             public @NotNull Publisher<?> onChatInputInteraction(@NotNull ChatInputInteractionEvent event) {
                 for (Command command : commands) {
                     if (command.getAppCommand().name().equals(event.getCommandName())) {
-                        return event.reply(command.getCommandHandler().apply(event));
+                        command.handle(event);
                     }
                 }
                 return Mono.empty();

@@ -1,14 +1,17 @@
 package dev.glaeos.demonaday.commands;
 
+import dev.glaeos.demonaday.demons.PlayerManager;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class Commands {
 
-    public static final List<Command> COMMANDS = new ArrayList<>();
+    public final List<Command> COMMANDS;
 
-    static {
-        COMMANDS.add(new TestCommand());
+    public Commands(PlayerManager playerManager) {
+        COMMANDS = new ArrayList<>();
+        COMMANDS.add(new VerifyCommand(playerManager));
     }
 
 }
