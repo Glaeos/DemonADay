@@ -62,11 +62,16 @@ public class Loader {
 
     public static PlayerManager load(@NotNull String filename) throws FileNotFoundException {
         checkNotNull(filename);
-        Scanner reader = new Scanner(new File(filename));
         PlayerManager manager = new PlayerManager();
+        File file = new File(filename);
+        if (!file.exists()) {
+            return manager;
+        }
+        Scanner reader = new Scanner(file);
         while (reader.hasNext()) {
             manager.addPlayer(loadPlayer(reader));
         }
+        reader.close();
         return manager;
     }
 

@@ -1,9 +1,15 @@
 package dev.glaeos.demonaday.demons;
 
+import org.checkerframework.checker.units.qual.N;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Scanner;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -43,6 +49,31 @@ public class PlayerManager {
             throw new IllegalArgumentException("cannot add player who is already managed by this manager");
         }
         players.add(player);
+    }
+
+    public void save(@NotNull String filename) throws IOException {
+        checkNotNull(filename);
+        List<Byte> data = new ArrayList<>();
+
+        lock.lock();
+        for (Player player : players) {
+            player.getLock().lock();
+            data.addAll(player.serialize());
+            player.getLock().unlock();
+        }
+
+        File file = new File(filename);
+        file.createNewFile();
+        FileWriter writer = new FileWriter(file);
+
+        char[] finalData = new char[data.size()];
+        for (int i = 0; i < data.size(); i++) {
+            finalData[i] = (char) data.get(i).byteValue();
+        }
+
+        writer.write(finalData);
+        writer.close();
+        lock.unlock();
     }
 
 }

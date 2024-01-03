@@ -1,5 +1,6 @@
 package dev.glaeos.demonaday.demons;
 
+import dev.glaeos.demonaday.serialization.PrimitiveSerializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -131,6 +132,30 @@ public class Player {
             points += completion.getDifficulty().getPoints();
         }
         return points;
+    }
+
+    public List<Byte> serialize() {
+        List<Byte> data = new ArrayList<>();
+        PrimitiveSerializer.writeVarLong(data, userId);
+        PrimitiveSerializer.writeVarInt(data, completions.size());
+
+        for (DemonCompletion completion : completions) {
+            PrimitiveSerializer.writeVarInt(data, completion.getDayOfYear());
+            PrimitiveSerializer.writeVarInt(data, completion.getLevelId());
+
+            if (completion.getDifficulty() == null) {
+                PrimitiveSerializer.writeVarInt(data, 0);
+            } else {
+                PrimitiveSerializer.writeVarInt(data, completion.getDifficulty().ordinal()+1);
+            }
+
+            if (completion.isVerified()) {
+                data.add((byte) 1);
+            } else {
+                data.add((byte) 0);
+            }
+        }
+        return data;
     }
 
 }
