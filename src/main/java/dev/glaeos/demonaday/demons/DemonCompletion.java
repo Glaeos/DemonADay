@@ -1,5 +1,10 @@
 package dev.glaeos.demonaday.demons;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+
 public class DemonCompletion {
 
     private final long userId;
@@ -8,11 +13,18 @@ public class DemonCompletion {
 
     private final int levelId;
 
-    private final DemonDifficulty difficulty;
+    private final @Nullable DemonDifficulty difficulty;
 
     private boolean verified;
 
-    public DemonCompletion(long userId, short dayOfYear, int levelId, DemonDifficulty difficulty, boolean verified) {
+    public DemonCompletion(long userId, short dayOfYear, int levelId, @Nullable DemonDifficulty difficulty, boolean verified) {
+        if (userId < 1) {
+            throw new IllegalArgumentException("user ID cannot be < 1");
+        }
+        if (dayOfYear < 1 || dayOfYear > 366) {
+            throw new IllegalArgumentException("day of year cannot be < 1 or > 366");
+        }
+
         this.userId = userId;
         this.dayOfYear = dayOfYear;
         this.levelId = levelId;
@@ -32,7 +44,7 @@ public class DemonCompletion {
         return levelId;
     }
 
-    public DemonDifficulty getDifficulty() {
+    public @Nullable DemonDifficulty getDifficulty() {
         return difficulty;
     }
 
@@ -40,8 +52,12 @@ public class DemonCompletion {
         return verified;
     }
 
-    public void setVerified(boolean verified) {
-        this.verified = verified;
+    public void verify() {
+        verified = true;
+    }
+
+    public void reject() {
+        verified = false;
     }
 
 }

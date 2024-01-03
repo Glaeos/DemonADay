@@ -4,6 +4,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -11,8 +13,15 @@ public class PlayerManager {
 
     private final List<Player> players;
 
+    private final Lock lock;
+
     public PlayerManager() {
         players = new ArrayList<>();
+        lock = new ReentrantLock();
+    }
+
+    public Lock getLock() {
+        return lock;
     }
 
     public boolean hasPlayer(long userId) {

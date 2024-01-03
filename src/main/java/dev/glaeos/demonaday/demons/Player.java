@@ -1,6 +1,7 @@
 package dev.glaeos.demonaday.demons;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,14 +16,14 @@ public class Player {
 
     private final List<DemonCompletion> completions;
 
-    private final boolean disabled;
+    private boolean disabled;
 
     private final Lock lock;
 
-    public Player(long userId, boolean disabled) {
+    public Player(long userId) {
         this.userId = userId;
         completions = new ArrayList<>();
-        this.disabled = disabled;
+        disabled = false;
         lock = new ReentrantLock();
     }
 
@@ -34,40 +35,62 @@ public class Player {
         return disabled;
     }
 
+    public Lock getLock() {
+        return lock;
+    }
+
+    public void disable() {
+        disabled = true;
+    }
+
+    public void enable() {
+        disabled = false;
+    }
+
     public boolean hasCompleted(int levelId) throws IllegalStateException {
         if (disabled) {
             throw new IllegalStateException("shouldn't attempt to access completions of disabled player");
         }
-        lock.lock();
-        boolean result;
-        try {
-            result = completions.stream().anyMatch(completion -> completion.getLevelId() == levelId);
-        } finally {
-            lock.unlock();
+        return completions.stream().anyMatch(completion -> completion.getLevelId() == levelId);
+    }
+
+    public boolean hasCompletionOn(short dayOfYear) throws IllegalStateException, IllegalArgumentException {
+        if (disabled) {
+            throw new IllegalStateException("shouldn't attempt to access completions of a disabled player");
         }
-        return result;
+        if (dayOfYear < 1 || dayOfYear > 366) {
+            throw new IllegalArgumentException("day of year cannot be < 1 or > 366");
+        }
+        return completions.stream().anyMatch(completion -> completion.getDayOfYear() == dayOfYear);
     }
 
     public @NotNull DemonCompletion getCompletion(int levelId) throws IllegalStateException, IllegalArgumentException {
         if (disabled) {
             throw new IllegalStateException("shouldn't attempt to access completions of disabled player");
         }
-        lock.lock();
-        DemonCompletion result = null;
-        try {
-            for (DemonCompletion completion : completions) {
-                if (completion.getLevelId() == levelId) {
-                    result = completion;
-                    break;
-                }
+
+        for (DemonCompletion completion : completions) {
+            if (completion.getLevelId() == levelId) {
+                return completion;
             }
-        } finally {
-            lock.unlock();
         }
-        if (result == null) {
-            throw new IllegalArgumentException("completion not found");
+        throw new IllegalArgumentException("completion not found");
+    }
+
+    public @NotNull DemonCompletion getCompletionOn(short dayOfYear) throws IllegalStateException, IllegalArgumentException {
+        if (disabled) {
+            throw new IllegalStateException("shouldn't attempt to access completions of a disabled player");
         }
-        return result;
+        if (dayOfYear < 1 || dayOfYear > 366) {
+            throw new IllegalArgumentException("day of year cannot be < 1 or > 366");
+        }
+
+        for (DemonCompletion completion : completions) {
+            if (completion.getDayOfYear() == dayOfYear) {
+                return completion;
+            }
+        }
+        throw new IllegalArgumentException("completion not found");
     }
 
     public void addCompletion(@NotNull DemonCompletion completion) throws IllegalStateException, IllegalArgumentException {
@@ -75,60 +98,40 @@ public class Player {
         if (disabled) {
             throw new IllegalStateException("cannot add completion to disabled player");
         }
-        lock.lock();
-        try {
-            if (completion.getUserId() != userId) {
-                throw new IllegalArgumentException("cannot add completion by a different player");
-            }
-            if (hasCompleted(completion.getLevelId())) {
-                throw new IllegalArgumentException("cannot add completion as player has already beaten level");
-            }
-            completions.add(completion);
-        } finally {
-            lock.unlock();
+        if (completion.getUserId() != userId) {
+            throw new IllegalArgumentException("cannot add completion by a different player");
         }
+        if (hasCompleted(completion.getLevelId())) {
+            throw new IllegalArgumentException("cannot add completion as player has already beaten level");
+        }
+        completions.add(completion);
     }
 
     public void removeCompletion(@NotNull DemonCompletion completion) throws IllegalStateException, IllegalArgumentException {
         if (disabled) {
             throw new IllegalStateException("cannot remove completion of disabled player");
         }
-        lock.lock();
-        try {
-            if (!completions.contains(completion)) {
-                throw new IllegalArgumentException("cannot remove completion which player does not have");
-            }
-            completions.remove(completion);
-        } finally {
-            lock.unlock();
+        if (!completions.contains(completion)) {
+            throw new IllegalArgumentException("cannot remove completion which player does not have");
         }
+        completions.remove(completion);
     }
 
     public void clearCompletions() {
         if (disabled) {
             throw new IllegalStateException("cannot remove completions of disabled player");
         }
-        lock.lock();
-        try {
-            completions.clear();
-        } finally {
-            lock.unlock();
-        }
+        completions.clear();
     }
 
     public int calculatePoints() {
         // TODO: streaks
-        lock.lock();
         int points = 0;
-        try {
-            for (DemonCompletion completion : completions) {
-                if (!completion.isVerified()) {
-                    continue;
-                }
-                points += completion.getDifficulty().getPoints();
+        for (DemonCompletion completion : completions) {
+            if (!completion.isVerified()) {
+                continue;
             }
-        } finally {
-            lock.unlock();
+            points += completion.getDifficulty().getPoints();
         }
         return points;
     }

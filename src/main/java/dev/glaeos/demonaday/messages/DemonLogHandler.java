@@ -1,5 +1,7 @@
 package dev.glaeos.demonaday.messages;
 
+import dev.glaeos.demonaday.demons.DemonCompletion;
+import dev.glaeos.demonaday.demons.Player;
 import dev.glaeos.demonaday.demons.PlayerManager;
 import dev.glaeos.demonaday.responses.DemonLogFailureReason;
 import dev.glaeos.demonaday.responses.DemonLogResponse;
@@ -23,11 +25,11 @@ public class DemonLogHandler implements MessageHandler {
 
     private static final long CHANNEL = 1191093950803624128L;
 
-    private final PlayerManager manager;
+    private final PlayerManager playerManager;
 
     public DemonLogHandler(@NotNull PlayerManager playerManager) {
         checkNotNull(playerManager);
-        manager = playerManager;
+        this.playerManager = playerManager;
     }
 
     public long getChannelId() {
@@ -41,38 +43,77 @@ public class DemonLogHandler implements MessageHandler {
         if (message.getAuthor().isEmpty()) {
             return Mono.empty();
         }
-
-        LocalDate time = LocalDate.now(ZoneId.of("America/Chicago"));
         long userId = message.getAuthor().get().getId().asLong();
+        int levelId;
+        LocalDate time = LocalDate.now(ZoneId.of("America/Chicago"));
+        ;
 
-        String content = message.getContent().stripLeading().toLowerCase();
-        if (content.startsWith("id:")) {
-            content = content.substring(3).stripLeading();
-        }
-
-        int i;
-        for (i = 0; i < content.length(); i++) {
-            if (!Character.isDigit(content.charAt(i))) {
-                break;
-            }
-        }
-        content = content.substring(0, i);
-
-        long levelId;
         try {
-            levelId = Long.parseLong(content);
-        } catch (NumberFormatException err) {
-            return channel.createMessage(DemonLogResponse.failure(userId, time, DemonLogFailureReason.MISSING_LEVEL_ID));
+            String content = message.getContent().stripLeading().toLowerCase();
+            if (content.startsWith("id:")) {
+                content = content.substring(3).stripLeading();
+            } else if (content.startsWith("id")) {
+                content = content.substring(2).stripLeading();
+            }
+
+            int i;
+            for (i = 0; i < content.length(); i++) {
+                if (!Character.isDigit(content.charAt(i))) {
+                    break;
+                }
+            }
+            content = content.substring(0, i);
+
+            try {
+                levelId = Integer.parseInt(content);
+            } catch (NumberFormatException err) {
+                return channel.createMessage(DemonLogResponse.failure(userId, time, null, DemonLogFailureReason.MISSING_LEVEL_ID));
+            }
+
+            if (levelId < 1 || levelId > 120000000) {
+                return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.INVALID_LEVEL_ID));
+            }
+            if (message.getAttachments().size() < 2) {
+                return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.MISSING_ATTACHMENTS));
+            }
+        } catch (Exception err) {
+            return channel.createMessage(DemonLogResponse.error(userId));
         }
 
-        if (levelId < 1 || levelId > 120000000) {
-            return channel.createMessage(DemonLogResponse.failure(userId, time, DemonLogFailureReason.INVALID_LEVEL_ID));
-        }
-        if (message.getAttachments().size() < 2) {
-            return channel.createMessage(DemonLogResponse.failure(userId, time, DemonLogFailureReason.MISSING_ATTACHMENTS));
-        }
+        try {
+            Player player;
+            playerManager.getLock().lock();
+            try {
+                if (!playerManager.hasPlayer(userId)) {
+                    playerManager.addPlayer(new Player(userId));
+                }
+                player = playerManager.getPlayer(userId);
+            } finally {
+                playerManager.getLock().unlock();
+            }
+            player.getLock().lock();
 
-        return channel.createMessage(DemonLogResponse.success(userId, time, levelId));
+            try {
+                if (player.isDisabled()) {
+                    player.getLock().unlock();
+                    return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.PLAYER_DISABLED));
+                }
+                if (player.hasCompleted(levelId)) {
+                    player.getLock().unlock();
+                    return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.ALREADY_COMPLETED));
+                }
+                if (player.hasCompletionOn((short) time.getDayOfYear())) {
+                    player.getLock().unlock();
+                    return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.ALREADY_SUBMITTED_TODAY));
+                }
+                player.addCompletion(new DemonCompletion(userId, (short) time.getDayOfYear(), levelId, null, false));
+            } finally {
+                player.getLock().unlock();
+            }
+            return channel.createMessage(DemonLogResponse.success(userId, time, levelId));
+        } catch (Exception err) {
+            return channel.createMessage(DemonLogResponse.error(userId));
+        }
     }
 
 }
