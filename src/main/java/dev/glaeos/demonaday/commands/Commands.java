@@ -12,6 +12,7 @@ public class Commands {
     public Commands(PlayerManager playerManager) {
         COMMANDS = new ArrayList<>();
         COMMANDS.add(new VerifyCommand(playerManager));
+        COMMANDS.add(new PointsCommand(playerManager));
     }
 
 }

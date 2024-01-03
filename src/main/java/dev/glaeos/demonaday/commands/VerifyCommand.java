@@ -56,7 +56,6 @@ public class VerifyCommand implements Command {
     }
 
     public void handle(ChatInputInteractionEvent interaction) {
-        //interaction.deferReply().withEphemeral(true).subscribe();
         try {
             long userId = interaction.getInteraction().getUser().getId().asLong();
             boolean authenticated = false;
