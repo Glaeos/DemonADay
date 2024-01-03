@@ -1,16 +1,18 @@
 package dev.glaeos.demonaday.serialization;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.List;
 import java.util.Scanner;
 
 public class PrimitiveSerializer {
 
-    public static int readVarInt(Scanner reader) {
+    public static int readVarInt(SimpleBuffer buffer) {
         int value = 0;
         int size = 0;
         int b;
 
-        while (((b = reader.nextByte()) & 0x80) == 0x80) {
+        while (((b = buffer.next()) & 0x80) == 0x80) {
             value |= (b & 0x7F) << (size++ * 7);
             if (size > 5) {
                 throw new IllegalArgumentException("VarInt is too big");
@@ -30,15 +32,16 @@ public class PrimitiveSerializer {
         } while (data != 0);
     }
 
-    public static long readVarLong(Scanner reader) {
+    public static long readVarLong(SimpleBuffer buffer) {
         long value = 0L;
         int size = 0;
         long b;
 
-        while (((b = reader.nextByte()) & 0x80) == 0x80) {
+        while (((b = buffer.next()) & 0x80) == 0x80) {
             value |= (b & 0x7F) << (size++ * 7);
-            if (size > 10) {
-                throw new IllegalArgumentException("VarLong is too big");
+            if (size > 9) {
+                return value | ((b & 0x7FL) << (size * 7));
+                //throw new IllegalArgumentException("VarLong is too big");
             }
         }
         return value | ((b & 0x7FL) << (size * 7));

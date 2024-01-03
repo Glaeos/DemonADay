@@ -36,7 +36,7 @@ public class DiscordBot {
 
 
         DiscordClient client = DiscordClient.create(token);
-        client.gateway().setEnabledIntents(IntentSet.of(Intent.MESSAGE_CONTENT));
+        client.gateway().setEnabledIntents(IntentSet.of(Intent.MESSAGE_CONTENT, Intent.GUILD_MEMBERS));
         GatewayDiscordClient gateway = client.gateway().withEventDispatcher(d -> d.on(ReadyEvent.class)
                 .doOnNext(event -> LOGGER.info("Logged in as " + event.getSelf().getUsername())))
                 .login().block();

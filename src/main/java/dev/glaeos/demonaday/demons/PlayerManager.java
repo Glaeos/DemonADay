@@ -3,13 +3,11 @@ package dev.glaeos.demonaday.demons;
 import org.checkerframework.checker.units.qual.N;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -19,15 +17,23 @@ public class PlayerManager {
 
     private final List<Player> players;
 
-    private final Lock lock;
+    private final Semaphore lock;
 
     public PlayerManager() {
         players = new ArrayList<>();
-        lock = new ReentrantLock();
+        lock = new Semaphore(1);
     }
 
-    public Lock getLock() {
-        return lock;
+    public void acquire() throws InterruptedException {
+        lock.acquire();
+    }
+
+    public void release() {
+        lock.release();
+    }
+
+    public List<Player> getPlayers() {
+        return players;
     }
 
     public boolean hasPlayer(long userId) {
@@ -51,29 +57,31 @@ public class PlayerManager {
         players.add(player);
     }
 
-    public void save(@NotNull String filename) throws IOException {
+    public void save(@NotNull String filename) throws IOException, InterruptedException {
         checkNotNull(filename);
         List<Byte> data = new ArrayList<>();
 
-        lock.lock();
+        acquire();
         for (Player player : players) {
-            player.getLock().lock();
+            System.out.println(player.getUserId());
+            player.acquire();
             data.addAll(player.serialize());
-            player.getLock().unlock();
+            player.release();
         }
+        System.out.println(data);
 
         File file = new File(filename);
         file.createNewFile();
-        FileWriter writer = new FileWriter(file);
+        FileOutputStream writer = new FileOutputStream(file);
 
-        char[] finalData = new char[data.size()];
+        byte[] finalData = new byte[data.size()];
         for (int i = 0; i < data.size(); i++) {
-            finalData[i] = (char) data.get(i).byteValue();
+            finalData[i] = data.get(i);
         }
 
         writer.write(finalData);
         writer.close();
-        lock.unlock();
+        release();
     }
 
 }

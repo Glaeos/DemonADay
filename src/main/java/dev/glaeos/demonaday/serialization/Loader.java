@@ -6,39 +6,38 @@ import dev.glaeos.demonaday.demons.Player;
 import dev.glaeos.demonaday.demons.PlayerManager;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.Scanner;
+import java.io.*;
+import java.util.Arrays;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class Loader {
 
-    protected static Player loadPlayer(Scanner reader) {
-        long userId = PrimitiveSerializer.readVarLong(reader);
+    protected static Player loadPlayer(SimpleBuffer buffer) {
+        long userId = PrimitiveSerializer.readVarLong(buffer);
         if (userId < 1) {
             throw new IllegalArgumentException("deserializing user id failed");
         }
         Player player = new Player(userId);
 
-        int numCompletions = PrimitiveSerializer.readVarInt(reader);
+        int numCompletions = PrimitiveSerializer.readVarInt(buffer);
         if (numCompletions < 0) {
             throw new IllegalArgumentException("deserializing number of completions failed");
         }
 
         for (int i = 0; i < numCompletions; i++) {
-            int dayOfYearInt = PrimitiveSerializer.readVarInt(reader);
+            int dayOfYearInt = PrimitiveSerializer.readVarInt(buffer);
             if (dayOfYearInt < 1 || dayOfYearInt > 366) {
                 throw new IllegalArgumentException("deserializing day of year failed");
             }
             short dayOfYear = (short) dayOfYearInt;
 
-            int levelId = PrimitiveSerializer.readVarInt(reader);
+            int levelId = PrimitiveSerializer.readVarInt(buffer);
             if (levelId < 1 || levelId > 120000000) {
                 throw new IllegalArgumentException("deserializing level id failed");
             }
 
-            byte difficultyByte = reader.nextByte();
+            byte difficultyByte = buffer.next();
             DemonDifficulty difficulty;
             if (difficultyByte == 0) {
                 difficulty = null;
@@ -46,7 +45,7 @@ public class Loader {
                 difficulty = DemonDifficulty.values()[difficultyByte-1];
             }
 
-            byte verifiedByte = reader.nextByte();
+            byte verifiedByte = buffer.next();
             boolean verified;
             if (verifiedByte == 0) {
                 verified = false;
@@ -60,18 +59,22 @@ public class Loader {
         return player;
     }
 
-    public static PlayerManager load(@NotNull String filename) throws FileNotFoundException {
+    public static PlayerManager load(@NotNull String filename) throws IOException, InterruptedException {
         checkNotNull(filename);
         PlayerManager manager = new PlayerManager();
+        manager.acquire();
         File file = new File(filename);
         if (!file.exists()) {
             return manager;
         }
-        Scanner reader = new Scanner(file);
-        while (reader.hasNext()) {
-            manager.addPlayer(loadPlayer(reader));
-        }
+        FileInputStream reader = new FileInputStream(file);
+        SimpleBuffer buffer = new SimpleBuffer(reader.readAllBytes());
         reader.close();
+
+        while (buffer.hasNext()) {
+            manager.addPlayer(loadPlayer(buffer));
+        }
+        manager.release();
         return manager;
     }
 

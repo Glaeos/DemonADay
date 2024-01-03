@@ -77,41 +77,43 @@ public class DemonLogHandler implements MessageHandler {
                 return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.MISSING_ATTACHMENTS));
             }
         } catch (Exception err) {
+            LOGGER.error("Demon log handler encountered exception during pre-player processing: " + err);
             return channel.createMessage(DemonLogResponse.error(userId));
         }
 
         try {
             Player player;
-            playerManager.getLock().lock();
+            playerManager.acquire();
             try {
                 if (!playerManager.hasPlayer(userId)) {
                     playerManager.addPlayer(new Player(userId));
                 }
                 player = playerManager.getPlayer(userId);
             } finally {
-                playerManager.getLock().unlock();
+                playerManager.release();
             }
-            player.getLock().lock();
+            player.acquire();
 
             try {
                 if (player.isDisabled()) {
-                    player.getLock().unlock();
+                    player.release();
                     return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.PLAYER_DISABLED));
                 }
                 if (player.hasCompleted(levelId)) {
-                    player.getLock().unlock();
+                    player.release();
                     return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.ALREADY_COMPLETED));
                 }
                 if (player.hasCompletionOn((short) time.getDayOfYear())) {
-                    player.getLock().unlock();
+                    player.release();
                     return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.ALREADY_SUBMITTED_TODAY));
                 }
                 player.addCompletion(new DemonCompletion((short) time.getDayOfYear(), levelId, null, false));
             } finally {
-                player.getLock().unlock();
+                player.release();
             }
             return channel.createMessage(DemonLogResponse.success(userId, time, levelId));
         } catch (Exception err) {
+            LOGGER.error("Demon log handler encountered exception during player processing: " + err);
             return channel.createMessage(DemonLogResponse.error(userId));
         }
     }

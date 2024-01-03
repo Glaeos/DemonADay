@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -19,13 +20,13 @@ public class Player {
 
     private boolean disabled;
 
-    private final Lock lock;
+    private final Semaphore lock;
 
     public Player(long userId) {
         this.userId = userId;
         completions = new ArrayList<>();
         disabled = false;
-        lock = new ReentrantLock();
+        lock = new Semaphore(1);
     }
 
     public long getUserId() {
@@ -36,8 +37,12 @@ public class Player {
         return disabled;
     }
 
-    public Lock getLock() {
-        return lock;
+    public void acquire() throws InterruptedException {
+        lock.acquire();
+    }
+
+    public void release() {
+        lock.release();
     }
 
     public void disable() {
