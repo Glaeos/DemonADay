@@ -1,7 +1,6 @@
 package dev.glaeos.demonaday.commands;
 
 import dev.glaeos.demonaday.DiscordConstants;
-import dev.glaeos.demonaday.Env;
 import dev.glaeos.demonaday.demons.DemonCompletion;
 import dev.glaeos.demonaday.demons.DemonDifficulty;
 import dev.glaeos.demonaday.demons.Player;
@@ -18,25 +17,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
-import java.util.function.Function;
 
-public class VerifyCommand implements Command {
+public class AddCommand implements Command {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(VerifyCommand.class);
 
     private final PlayerManager playerManager;
 
-    public VerifyCommand(PlayerManager playerManager) {
+    public AddCommand(PlayerManager playerManager) {
         this.playerManager = playerManager;
     }
 
     private static final ApplicationCommandRequest appCommand = ApplicationCommandRequest.builder()
-            .name("verify")
-            .description("ADMIN ONLY - Verifies a demon completion.")
+            .name("add")
+            .description("ADMIN ONLY - Manually adds a verified demon completion.")
             .addOption(ApplicationCommandOptionData.builder()
                     .name("user")
-                    .description("The user of the player whose record is being verified.")
+                    .description("The user of the player whose record is being added.")
                     .type(ApplicationCommandOption.Type.USER.getValue())
+                    .required(true)
+                    .build())
+            .addOption(ApplicationCommandOptionData.builder()
+                    .name("day")
+                    .description("The day of the year (1-366) when the player beat the level.")
+                    .type(ApplicationCommandOption.Type.INTEGER.getValue())
                     .required(true)
                     .build())
             .addOption(ApplicationCommandOptionData.builder()
@@ -89,12 +93,22 @@ public class VerifyCommand implements Command {
             }
             playerManager.acquire();
             if (!playerManager.hasPlayer(commandUser.getId().asLong())) {
-                playerManager.release();
-                interaction.reply("Could not find player for given user.").withEphemeral(true).subscribe();
-                return;
+                playerManager.addPlayer(new Player(commandUser.getId().asLong()));
             }
             Player player = playerManager.getPlayer(commandUser.getId().asLong());
             playerManager.release();
+
+            if (interaction.getOption("day").isEmpty()) {
+                interaction.reply("Missing day.").withEphemeral(true).subscribe();
+            }
+            if (interaction.getOption("day").get().getValue().isEmpty()) {
+                interaction.reply("Missing day.").withEphemeral(true).subscribe();
+            }
+            long day = interaction.getOption("day").get().getValue().get().asLong();
+            if (day < 1 || day > 366) {
+                interaction.reply("Invalid day. Should be between 1 and 366 inclusive.").withEphemeral(true).subscribe();
+            }
+            short dayOfYear = (short) day;
 
             if (interaction.getOption("level").isEmpty()) {
                 interaction.reply("Missing level ID.").withEphemeral(true).subscribe();
@@ -124,35 +138,35 @@ public class VerifyCommand implements Command {
                 return;
             }
             DemonDifficulty difficulty = DemonDifficulty.valueOf(difficultyString);
+            String time = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2000, dayOfYear));
 
             player.acquire();
-            if (!player.hasCompleted(levelId)) {
+            if (player.hasCompleted(levelId)) {
                 player.release();
-                interaction.reply("Player has not logged a completion with the given level ID.").withEphemeral(true).subscribe();
+                interaction.reply("Player already has a logged completion as the level with ID " + levelId).withEphemeral(true).subscribe();
                 return;
             }
-            DemonCompletion completion = player.getCompletion(levelId);
-            if (completion.isVerified()) {
+            if (player.hasCompletionOn(dayOfYear)) {
                 player.release();
-                interaction.reply("Player's completion is already verified.").withEphemeral(true).subscribe();
+                interaction.reply("Player already has a logged completion for " + time).withEphemeral(true).subscribe();
                 return;
             }
-            completion.setDifficulty(difficulty);
-            completion.verify();
-            player.release();
-            interaction.reply("Player's record was successfully verified.").subscribe();
 
+            DemonCompletion completion = new DemonCompletion(dayOfYear, levelId, difficulty, true);
+            player.addCompletion(completion);
+            player.release();
+
+            interaction.reply("Successfully added record.").subscribe();
             Channel verifyChannel = interaction.getClient().getChannelById(Snowflake.of(DiscordConstants.VERIFY_CHANNEL)).block();
             if (verifyChannel == null) {
                 LOGGER.error("Failed to fetch channel for verification logs.");
                 return;
             }
-            String time = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2000, completion.getDayOfYear()));
-            verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + levelId + "** has been verified with a demon difficulty of **" + completion.getDifficulty().name().toLowerCase() + "**! <:verified:1192248314972872704>").subscribe();
+            verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + levelId + "** has been added and verified with a demon difficulty of **" + completion.getDifficulty().name().toLowerCase() + "**! <:verified:1192248314972872704>").subscribe();
 
         } catch (Exception err) {
-            LOGGER.error("Verify command encountered exception: " + err);
-            interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
+            LOGGER.error("Add command encountered exception: " + err);
+            interaction.reply("Something went wrong processing your request. Get in touch with Glaeos");
         }
     }
 

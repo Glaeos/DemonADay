@@ -14,7 +14,7 @@ public class DemonLogResponse {
             "10th", "11th", "12th", "13th", "14th", "15th", "16th", "17th", "18th", "19th", "20th", "21st", "22nd",
             "23rd", "24th", "25th", "26th", "27th", "28th", "29th", "30th", "31st"};
 
-    protected static @NotNull String formatDayOfYear(@NotNull LocalDate time) {
+    public static @NotNull String formatDayOfYear(@NotNull LocalDate time) {
         return time.format(DateTimeFormatter.ofPattern("MMMM")) + " " + DAY_SUFFIXES[time.getDayOfMonth()];
     }
 

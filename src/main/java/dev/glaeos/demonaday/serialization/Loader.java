@@ -65,6 +65,7 @@ public class Loader {
         manager.acquire();
         File file = new File(filename);
         if (!file.exists()) {
+            manager.release();
             return manager;
         }
         FileInputStream reader = new FileInputStream(file);

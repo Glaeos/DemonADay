@@ -63,12 +63,10 @@ public class PlayerManager {
 
         acquire();
         for (Player player : players) {
-            System.out.println(player.getUserId());
             player.acquire();
             data.addAll(player.serialize());
             player.release();
         }
-        System.out.println(data);
 
         File file = new File(filename);
         file.createNewFile();

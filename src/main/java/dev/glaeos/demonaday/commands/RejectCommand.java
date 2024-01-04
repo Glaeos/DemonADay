@@ -3,7 +3,6 @@ package dev.glaeos.demonaday.commands;
 import dev.glaeos.demonaday.DiscordConstants;
 import dev.glaeos.demonaday.Env;
 import dev.glaeos.demonaday.demons.DemonCompletion;
-import dev.glaeos.demonaday.demons.DemonDifficulty;
 import dev.glaeos.demonaday.demons.Player;
 import dev.glaeos.demonaday.demons.PlayerManager;
 import dev.glaeos.demonaday.responses.DemonLogResponse;
@@ -18,24 +17,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
-import java.util.function.Function;
 
-public class VerifyCommand implements Command {
+public class RejectCommand implements Command {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(VerifyCommand.class);
 
     private final PlayerManager playerManager;
 
-    public VerifyCommand(PlayerManager playerManager) {
+    public RejectCommand(PlayerManager playerManager) {
         this.playerManager = playerManager;
     }
 
     private static final ApplicationCommandRequest appCommand = ApplicationCommandRequest.builder()
-            .name("verify")
-            .description("ADMIN ONLY - Verifies a demon completion.")
+            .name("reject")
+            .description("ADMIN ONLY - Rejects a demon completion.")
             .addOption(ApplicationCommandOptionData.builder()
                     .name("user")
-                    .description("The user of the player whose record is being verified.")
+                    .description("The user of the player whose record is being rejected.")
                     .type(ApplicationCommandOption.Type.USER.getValue())
                     .required(true)
                     .build())
@@ -46,10 +44,10 @@ public class VerifyCommand implements Command {
                     .required(true)
                     .build())
             .addOption(ApplicationCommandOptionData.builder()
-                    .name("difficulty")
-                    .description("The demon difficulty of the level the player beat.")
+                    .name("reason")
+                    .description("The reason the record is being rejected.")
                     .type(ApplicationCommandOption.Type.STRING.getValue())
-                    .required(true)
+                    .required(false)
                     .build())
             .build();
 
@@ -110,37 +108,32 @@ public class VerifyCommand implements Command {
                 return;
             }
 
-            if (interaction.getOption("difficulty").isEmpty()) {
-                interaction.reply("Missing difficulty.").withEphemeral(true).subscribe();
+            String reason;
+            if (interaction.getOption("reason").isEmpty()) {
+                reason = "No reason given.";
+            } else if (interaction.getOption("reason").get().getValue().isEmpty()) {
+                interaction.reply("Reason given but empty.").withEphemeral(true).subscribe();
                 return;
+            } else {
+                reason = interaction.getOption("reason").get().getValue().get().asString();
             }
-            if (interaction.getOption("difficulty").get().getValue().isEmpty()) {
-                interaction.reply("Missing difficulty.").withEphemeral(true).subscribe();
-                return;
-            }
-            String difficultyString = interaction.getOption("difficulty").get().getValue().get().asString().toUpperCase();
-            if (!difficultyString.equals("EASY") && !difficultyString.equals("MEDIUM") && !difficultyString.equals("HARD") && !difficultyString.equals("INSANE") && !difficultyString.equals("EXTREME")) {
-                interaction.reply("Invalid difficulty. Should be one of: 'Easy', 'Medium', 'Hard', 'Insane' or 'Extreme'.").withEphemeral(true).subscribe();
-                return;
-            }
-            DemonDifficulty difficulty = DemonDifficulty.valueOf(difficultyString);
 
             player.acquire();
             if (!player.hasCompleted(levelId)) {
                 player.release();
-                interaction.reply("Player has not logged a completion with the given level ID.").withEphemeral(true).subscribe();
+                interaction.reply("Player has not submitted a completion with the given level ID.").withEphemeral(true).subscribe();
                 return;
             }
             DemonCompletion completion = player.getCompletion(levelId);
             if (completion.isVerified()) {
                 player.release();
-                interaction.reply("Player's completion is already verified.").withEphemeral(true).subscribe();
+                interaction.reply("Player's completion is already verified. Use /remove to remove a verified completion.").withEphemeral(true).subscribe();
                 return;
             }
-            completion.setDifficulty(difficulty);
-            completion.verify();
+
+            player.removeCompletion(completion);
             player.release();
-            interaction.reply("Player's record was successfully verified.").subscribe();
+            interaction.reply("Player's record was successfully rejected.").subscribe();
 
             Channel verifyChannel = interaction.getClient().getChannelById(Snowflake.of(DiscordConstants.VERIFY_CHANNEL)).block();
             if (verifyChannel == null) {
@@ -148,11 +141,11 @@ public class VerifyCommand implements Command {
                 return;
             }
             String time = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2000, completion.getDayOfYear()));
-            verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + levelId + "** has been verified with a demon difficulty of **" + completion.getDifficulty().name().toLowerCase() + "**! <:verified:1192248314972872704>").subscribe();
+            verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + completion.getLevelId() + "** has been rejected. Reason: \"***" + reason + "***\". Get in touch with Glaeos or Trubactor. <:rejected:1192248311831343244>").subscribe();
 
         } catch (Exception err) {
-            LOGGER.error("Verify command encountered exception: " + err);
-            interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
+            LOGGER.error("Reject command encountered exception: " + err);
+            interaction.reply("Something went wrong processing your request. Get in touch with Glaeos").withEphemeral(true).subscribe();
         }
     }
 
