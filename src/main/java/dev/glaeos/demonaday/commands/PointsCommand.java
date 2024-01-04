@@ -49,6 +49,7 @@ public class PointsCommand implements Command {
                 isSelf = false;
                 if (interaction.getOption("user").get().getValue().isEmpty()) {
                     interaction.reply("User given but value missing.").withEphemeral(true).subscribe();
+                    return;
                 }
                 commandUserId = interaction.getOption("user").get().getValue().get().asUser().block().getId().asLong();
             }
@@ -65,7 +66,7 @@ public class PointsCommand implements Command {
                 interaction.reply(failedMessage).subscribe();
                 return;
             }
-            Player player = playerManager.getPlayer(userId);
+            Player player = playerManager.getPlayer(commandUserId);
             playerManager.release();
 
             player.acquire();

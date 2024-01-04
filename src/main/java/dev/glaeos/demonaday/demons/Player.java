@@ -53,6 +53,10 @@ public class Player {
         disabled = false;
     }
 
+    public List<DemonCompletion> getCompletions() {
+        return completions;
+    }
+
     public boolean hasCompleted(int levelId) throws IllegalStateException {
         if (disabled) {
             throw new IllegalStateException("shouldn't attempt to access completions of disabled player");

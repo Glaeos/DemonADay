@@ -26,6 +26,10 @@ public class DemonCompletion {
         this.verified = verified;
     }
 
+    public String toString() {
+        return "DemonCompletion{dayOfYear=" + dayOfYear + ", levelId=" + levelId + ", difficulty=" + difficulty + ", verified=" + verified + "}";
+    }
+
     public short getDayOfYear() {
         return dayOfYear;
     }
