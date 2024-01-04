@@ -23,7 +23,7 @@ public class DemonLogHandler implements MessageHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DemonLogHandler.class);
 
-    private static final long CHANNEL = 1191093950803624128L;
+    private static final long CHANNEL = 1191085366011244644L;
 
     private final PlayerManager playerManager;
 
