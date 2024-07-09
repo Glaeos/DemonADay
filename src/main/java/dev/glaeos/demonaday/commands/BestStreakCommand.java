@@ -26,7 +26,7 @@ public class BestStreakCommand implements Command {
     }
 
     private static final @NotNull ApplicationCommandRequest APP_COMMAND = ApplicationCommandRequest.builder()
-        .name("bestStreak")
+        .name("best_streak")
         .description("Calculates a player's best streak.")
         .addOption(ApplicationCommandOptionData.builder()
             .name("user")
@@ -93,16 +93,18 @@ public class BestStreakCommand implements Command {
                 } else if (isSelf) {
                     String startDay = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2024, streak.startDay()));
                     String endDay = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2024, streak.endDay()));
-                    message = "Your best streak was **" + DemonCalculator.findLongestStreak(player.getCompletions()) + "** days from **" + startDay + "** to **" + endDay + "**. Nice one!";
+                    message = "Your best streak was **" + (streak.getSize() + 1) + "** day" + (streak.getSize() == 0 ? "" : "s") + " from **" + startDay + "** to **" + endDay + "**. Nice one!";
                 } else {
-                    message = "This player is currently on a streak of **" + DemonCalculator.findLongestStreak(player.getCompletions()) + "** days.";
+                    String startDay = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2024, streak.startDay()));
+                    String endDay = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2024, streak.endDay()));
+                    message = "This player's best streak was **" + (streak.getSize() + 1) + "** day" + (streak.getSize() == 0 ? "" : "s") + " from **" + startDay + "** to **" + endDay + "**. Nice one!";
                 }
             } finally {
                 player.release();
             }
             interaction.reply(message).subscribe();
         } catch (Exception err) {
-            LOGGER.error("Points command encountered exception", err);
+            LOGGER.error("Best streak command encountered exception", err);
             CommandHelper.replyWithError(interaction);
         }
     }

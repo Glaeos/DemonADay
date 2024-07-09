@@ -48,8 +48,7 @@ public final class PrimitiveSerializer {
         while (((b = buffer.readByte()) & 0x80) == 0x80) {
             value |= (b & 0x7F) << (size++ * 7);
             if (size > 9) {
-                return value | ((b & 0x7FL) << (size * 7));
-                //throw new IllegalArgumentException("VarLong is too big");
+                throw new IllegalArgumentException("VarLong is too big");
             }
         }
         return value | ((b & 0x7FL) << (size * 7));

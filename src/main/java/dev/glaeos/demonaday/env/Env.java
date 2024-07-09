@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.util.Scanner;
 
 public class Env {
@@ -13,13 +14,12 @@ public class Env {
     public static final long GUILD;
 
     static {
-        Scanner reader;
-        try {
-            reader = new Scanner(new File(".env"));
-        } catch (FileNotFoundException err) {
-            throw new RuntimeException(err);
+        InputStream envStream = ClassLoader.getSystemResourceAsStream(".env");
+        if (envStream == null) {
+            throw new NullPointerException("Failed to find .env");
         }
 
+        Scanner reader = new Scanner(envStream);
         String tokenLine = null;
         String guildLine = null;
         while ((tokenLine == null || guildLine == null) && reader.hasNextLine()) {

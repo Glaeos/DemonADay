@@ -26,15 +26,9 @@ public class Main {
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
     private static byte[] getArray(@NotNull ByteBuf buffer) {
-        byte[] finalData;
-        if (!buffer.hasArray()) {
-            finalData = new byte[buffer.readableBytes()];
-            for (int i = 0; i < buffer.readableBytes(); i++) {
-                finalData[i] = buffer.readByte();
-            }
-            return finalData;
-        }
-        return buffer.array();
+        byte[] array = new byte[buffer.writerIndex() - buffer.readerIndex()];
+        buffer.readBytes(array);
+        return array;
     }
 
     public static void main(String[] args) throws IOException {

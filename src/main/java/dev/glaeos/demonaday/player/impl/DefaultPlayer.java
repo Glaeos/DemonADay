@@ -142,7 +142,7 @@ public class DefaultPlayer implements Player {
             if (completion.getDifficulty() == null) {
                 PrimitiveSerializer.writeVarInt(buffer, 0);
             } else {
-                PrimitiveSerializer.writeVarInt(buffer, completion.getDifficulty().ordinal()+1);
+                PrimitiveSerializer.writeVarInt(buffer, completion.getDifficulty().ordinal() + 1);
             }
 
             if (completion.isEnabled()) {

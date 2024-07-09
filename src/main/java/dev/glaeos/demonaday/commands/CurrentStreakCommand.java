@@ -27,7 +27,7 @@ public class CurrentStreakCommand implements Command {
     }
 
     private static final @NotNull ApplicationCommandRequest APP_COMMAND = ApplicationCommandRequest.builder()
-        .name("currentStreak")
+        .name("current_streak")
         .description("Calculates a player's current streak.")
         .addOption(ApplicationCommandOptionData.builder()
             .name("user")
@@ -89,21 +89,27 @@ public class CurrentStreakCommand implements Command {
             String message;
             player.acquire();
             try {
-                Streak streak = DemonCalculator.findLongestStreak(player.getCompletions());
+                Streak streak = DemonCalculator.findStreakIncluding(player.getCompletions(), (short) time.getDayOfYear());
                 if (streak == null) {
-                    message = "Could not find a streak. Has this player submitted any demon completions yet?";
+                    streak = DemonCalculator.findStreakIncluding(player.getCompletions(), (short) (time.getDayOfYear() - 1));
+                    if (streak == null) {
+                        message = "This player is not currently on a streak.";
+                    } else {
+                        String day = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2024, streak.startDay()));
+                        message = "You are currently on a streak of **" + (streak.getSize() + 1) + "** day" + (streak.getSize() == 0 ? "" : "s") + " since **" + day + "**. Keep it up, don't forget to log a completion today!";
+                    }
                 } else if (isSelf) {
                     String day = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2024, streak.startDay()));
-                    message = "You are currently on a streak of **" + streak.getSize() + "** days since **" + day + "**. Keep it up, don't forget to log a completion tomorrow!";
+                    message = "You are currently on a streak of **" + (streak.getSize() + 1) + "** day" + (streak.getSize() == 0 ? "" : "s") + " since **" + day + "**. Keep it up, don't forget to log a completion tomorrow!";
                 } else {
-                    message = "This player is currently on a streak of **" + DemonCalculator.findStreakIncluding(player.getCompletions(), (short) time.getDayOfYear()) + "** days.";
+                    message = "This player is currently on a streak of **" + (streak.getSize() + 1) + "** day" + (streak.getSize() == 0 ? "" : "s") + ".";
                 }
             } finally {
                 player.release();
             }
             interaction.reply(message).subscribe();
         } catch (Exception err) {
-            LOGGER.error("Points command encountered exception", err);
+            LOGGER.error("Current streak command encountered exception", err);
             CommandHelper.replyWithError(interaction);
         }
     }

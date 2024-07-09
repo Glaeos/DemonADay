@@ -119,7 +119,7 @@ public class VerifyCommand implements Command {
                 String time = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2024, completion.getDayOfYear()));
                 Streak streak = DemonCalculator.findStreakIncluding(player.getCompletions(), (short) LocalDate.now(DiscordConstant.TIMEZONE).getDayOfYear());
                 int streakSize = streak == null ? 0 : streak.getSize();
-                verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + levelId + "** has been verified with a demon difficulty of **" + difficulty.name().toLowerCase() + "**! You have gained **" + gainedPoints + "** point" + (gainedPoints == 1 ? "" : "s") + ", and are currently on a streak of **" + (streakSize == 1 ? "" : "s") + "** days! <:verified:1192248314972872704>").subscribe();
+                verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + levelId + "** has been verified with a demon difficulty of **" + difficulty.name().toLowerCase() + "**! You have gained **" + gainedPoints + "** point" + (gainedPoints == 1 ? "" : "s") + ", and are currently on a streak of **" + (streakSize + 1) + "** day" + (streakSize == 0 ? "" : "s") + "! <:verified:1192248314972872704>").subscribe();
             } finally {
                 player.release();
             }
