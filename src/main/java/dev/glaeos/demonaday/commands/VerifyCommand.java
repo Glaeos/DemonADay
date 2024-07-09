@@ -1,6 +1,8 @@
 package dev.glaeos.demonaday.commands;
 
-import dev.glaeos.demonaday.env.DiscordConstants;
+import dev.glaeos.demonaday.demons.DemonCalculator;
+import dev.glaeos.demonaday.demons.Streak;
+import dev.glaeos.demonaday.env.DiscordConstant;
 import dev.glaeos.demonaday.demons.DemonCompletion;
 import dev.glaeos.demonaday.demons.DemonDifficulty;
 import dev.glaeos.demonaday.player.Player;
@@ -13,6 +15,7 @@ import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.Channel;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,15 +23,15 @@ import java.time.LocalDate;
 
 public class VerifyCommand implements Command {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(VerifyCommand.class);
+    private static final @NotNull Logger LOGGER = LoggerFactory.getLogger(VerifyCommand.class);
 
-    private final PlayerManager playerManager;
+    private final @NotNull PlayerManager playerManager;
 
-    public VerifyCommand(PlayerManager playerManager) {
+    public VerifyCommand(@NotNull PlayerManager playerManager) {
         this.playerManager = playerManager;
     }
 
-    private static final ApplicationCommandRequest appCommand = ApplicationCommandRequest.builder()
+    private static final @NotNull ApplicationCommandRequest APP_COMMAND = ApplicationCommandRequest.builder()
             .name("verify")
             .description("ADMIN ONLY - Verifies a demon completion.")
             .addOption(ApplicationCommandOptionData.builder()
@@ -52,86 +55,36 @@ public class VerifyCommand implements Command {
             .build();
 
     @Override
-    public ApplicationCommandRequest getAppCommand() {
-        return appCommand;
+    public @NotNull ApplicationCommandRequest getAppCommand() {
+        return APP_COMMAND;
     }
 
     @Override
-    public void handle(ChatInputInteractionEvent interaction) {
+    public void handle(@NotNull ChatInputInteractionEvent interaction) {
         try {
-            long userId = interaction.getInteraction().getUser().getId().asLong();
-            boolean authenticated = false;
-            for (long admin : DiscordConstants.ADMINS) {
-                if (admin == userId) {
-                    authenticated = true;
-                    break;
-                }
-            }
-            if (!authenticated) {
-                interaction.reply("**You do not have permission to use this command.**").withEphemeral(true).subscribe();
+            if (!CommandHelper.authenticate(interaction)) {
                 return;
             }
 
-            if (interaction.getOption("user").isEmpty()) {
-                interaction.reply("Missing user.").withEphemeral(true).subscribe();
-                return;
-            }
-            if (interaction.getOption("user").get().getValue().isEmpty()) {
-                interaction.reply("Missing user.").withEphemeral(true).subscribe();
-                return;
-            }
-            User commandUser = interaction.getOption("user").get().getValue().get().asUser().block();
-            if (commandUser == null) {
-                interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
+            User user = CommandHelper.getUserOption(interaction);
+            if (user == null) {
                 return;
             }
 
-            Player player;
-            playerManager.acquire();
-            try {
-                if (!playerManager.hasPlayer(commandUser.getId().asLong())) {
-                    playerManager.release();
-                    interaction.reply("Could not find player for given user.").withEphemeral(true).subscribe();
-                    return;
-                }
-
-                player = playerManager.getPlayer(commandUser.getId().asLong());
-                if (player == null) {
-                    interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
-                    return;
-                }
-            } finally {
-                playerManager.release();
-            }
-
-            if (interaction.getOption("level").isEmpty()) {
-                interaction.reply("Missing level ID.").withEphemeral(true).subscribe();
-                return;
-            }
-            if (interaction.getOption("level").get().getValue().isEmpty()) {
-                interaction.reply("Missing level ID.").withEphemeral(true).subscribe();
-                return;
-            }
-            int levelId = (int) interaction.getOption("level").get().getValue().get().asLong();
-            if (levelId < 1 || levelId > 120000000) {
-                interaction.reply("Invalid level ID. Should be between 1 and 120 million inclusive.").withEphemeral(true).subscribe();
+            Integer levelId = CommandHelper.getLevelOption(interaction);
+            if (levelId == null) {
                 return;
             }
 
-            if (interaction.getOption("difficulty").isEmpty()) {
-                interaction.reply("Missing difficulty.").withEphemeral(true).subscribe();
+            DemonDifficulty difficulty = CommandHelper.getDifficultyOption(interaction);
+            if (difficulty == null) {
                 return;
             }
-            if (interaction.getOption("difficulty").get().getValue().isEmpty()) {
-                interaction.reply("Missing difficulty.").withEphemeral(true).subscribe();
+
+            Player player = CommandHelper.getPlayer(interaction, playerManager, user);
+            if (player == null) {
                 return;
             }
-            String difficultyString = interaction.getOption("difficulty").get().getValue().get().asString().toUpperCase();
-            if (!difficultyString.equals("EASY") && !difficultyString.equals("MEDIUM") && !difficultyString.equals("HARD") && !difficultyString.equals("INSANE") && !difficultyString.equals("EXTREME")) {
-                interaction.reply("Invalid difficulty. Should be one of: 'Easy', 'Medium', 'Hard', 'Insane' or 'Extreme'.").withEphemeral(true).subscribe();
-                return;
-            }
-            DemonDifficulty difficulty = DemonDifficulty.valueOf(difficultyString);
 
             player.acquire();
             try {
@@ -151,22 +104,27 @@ public class VerifyCommand implements Command {
                     return;
                 }
 
+                int prevPoints = DemonCalculator.calculatePoints(player.getCompletions());
                 completion.setDifficulty(difficulty);
                 completion.enable();
+                int gainedPoints = DemonCalculator.calculatePoints(player.getCompletions()) - prevPoints;
                 interaction.reply("Player's record was successfully verified.").subscribe();
 
-                Channel verifyChannel = interaction.getClient().getChannelById(Snowflake.of(DiscordConstants.VERIFY_CHANNEL)).block();
+                Channel verifyChannel = interaction.getClient().getChannelById(Snowflake.of(DiscordConstant.VERIFY_CHANNEL)).block();
                 if (verifyChannel == null) {
                     LOGGER.error("Failed to fetch channel for verification logs.");
                     return;
                 }
-                String time = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2000, completion.getDayOfYear()));
-                verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + levelId + "** has been verified with a demon difficulty of **" + difficulty.name().toLowerCase() + "**! <:verified:1192248314972872704>").subscribe();
+
+                String time = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2024, completion.getDayOfYear()));
+                Streak streak = DemonCalculator.findStreakIncluding(player.getCompletions(), (short) LocalDate.now(DiscordConstant.TIMEZONE).getDayOfYear());
+                int streakSize = streak == null ? 0 : streak.getSize();
+                verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + levelId + "** has been verified with a demon difficulty of **" + difficulty.name().toLowerCase() + "**! You have gained **" + gainedPoints + "** point" + (gainedPoints == 1 ? "" : "s") + ", and are currently on a streak of **" + (streakSize == 1 ? "" : "s") + "** days! <:verified:1192248314972872704>").subscribe();
             } finally {
                 player.release();
             }
         } catch (Exception err) {
-            LOGGER.error("Verify command encountered exception: " + err);
+            LOGGER.error("Verify command encountered exception", err);
             interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
         }
     }

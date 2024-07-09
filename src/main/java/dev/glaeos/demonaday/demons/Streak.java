@@ -16,8 +16,8 @@ public record Streak(short startDay, short endDay) {
         }
     }
 
-    public static @NotNull Streak none() {
-        return new Streak((short) 1, (short) 1);
+    public static @NotNull Streak none(short dayOfYear) {
+        return new Streak(dayOfYear, dayOfYear);
     }
 
     public int getSize() {

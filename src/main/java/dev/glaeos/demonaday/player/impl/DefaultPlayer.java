@@ -4,6 +4,7 @@ import dev.glaeos.demonaday.demons.DemonCompletion;
 import dev.glaeos.demonaday.demons.DemonDifficulty;
 import dev.glaeos.demonaday.player.Player;
 import dev.glaeos.demonaday.util.PrimitiveSerializer;
+import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.ByteBuffer;
@@ -12,8 +13,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-
-import static com.google.common.base.Preconditions.checkNotNull;
 
 public class DefaultPlayer implements Player {
 
@@ -29,7 +28,7 @@ public class DefaultPlayer implements Player {
         this.completions = new ArrayList<>();
     }
 
-    public static @NotNull DefaultPlayer load(@NotNull ByteBuffer buffer) {
+    public static @NotNull DefaultPlayer load(@NotNull ByteBuf buffer) {
         long userId = PrimitiveSerializer.readVarLong(buffer);
         if (userId < 1) {
             throw new IllegalArgumentException("deserializing user id failed");
@@ -53,7 +52,7 @@ public class DefaultPlayer implements Player {
                 throw new IllegalArgumentException("deserializing level id failed");
             }
 
-            byte difficultyByte = buffer.get();
+            byte difficultyByte = buffer.readByte();
             DemonDifficulty difficulty;
             if (difficultyByte == 0) {
                 difficulty = null;
@@ -61,7 +60,7 @@ public class DefaultPlayer implements Player {
                 difficulty = DemonDifficulty.values()[difficultyByte-1];
             }
 
-            byte verifiedByte = buffer.get();
+            byte verifiedByte = buffer.readByte();
             boolean verified;
             if (verifiedByte == 0) {
                 verified = false;
@@ -132,28 +131,26 @@ public class DefaultPlayer implements Player {
     }
 
     @Override
-    public @NotNull Collection<Byte> encode() {
-        List<Byte> data = new ArrayList<>();
-        PrimitiveSerializer.writeVarLong(data, userId);
-        PrimitiveSerializer.writeVarInt(data, completions.size());
+    public void encode(@NotNull ByteBuf buffer) {
+        PrimitiveSerializer.writeVarLong(buffer, userId);
+        PrimitiveSerializer.writeVarInt(buffer, completions.size());
 
         for (DemonCompletion completion : completions) {
-            PrimitiveSerializer.writeVarInt(data, completion.getDayOfYear());
-            PrimitiveSerializer.writeVarInt(data, completion.getLevelId());
+            PrimitiveSerializer.writeVarInt(buffer, completion.getDayOfYear());
+            PrimitiveSerializer.writeVarInt(buffer, completion.getLevelId());
 
             if (completion.getDifficulty() == null) {
-                PrimitiveSerializer.writeVarInt(data, 0);
+                PrimitiveSerializer.writeVarInt(buffer, 0);
             } else {
-                PrimitiveSerializer.writeVarInt(data, completion.getDifficulty().ordinal()+1);
+                PrimitiveSerializer.writeVarInt(buffer, completion.getDifficulty().ordinal()+1);
             }
 
             if (completion.isEnabled()) {
-                data.add((byte) 1);
+                buffer.writeByte((byte) 1);
             } else {
-                data.add((byte) 0);
+                buffer.writeByte((byte) 0);
             }
         }
-        return data;
     }
 
 }

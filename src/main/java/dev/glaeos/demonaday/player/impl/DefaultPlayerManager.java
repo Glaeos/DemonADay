@@ -2,12 +2,14 @@ package dev.glaeos.demonaday.player.impl;
 
 import dev.glaeos.demonaday.player.Player;
 import dev.glaeos.demonaday.player.PlayerManager;
+import io.netty.buffer.ByteBuf;
 import org.checkerframework.checker.units.qual.N;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,10 +29,10 @@ public class DefaultPlayerManager implements PlayerManager {
         this.players = new ArrayList<>();
     }
 
-    public static @NotNull DefaultPlayerManager load(@NotNull ByteBuffer buffer) {
+    public static @NotNull DefaultPlayerManager load(@NotNull ByteBuf buffer) {
         DefaultPlayerManager manager = new DefaultPlayerManager();
         manager.acquire();
-        while (buffer.hasRemaining()) {
+        while (buffer.readableBytes() > 0) {
             manager.addPlayer(DefaultPlayer.load(buffer));
         }
         manager.release();
@@ -82,19 +84,17 @@ public class DefaultPlayerManager implements PlayerManager {
     }
 
     @Override
-    public @NotNull Collection<Byte> encode() {
+    public void encode(@NotNull ByteBuf buffer) {
         lock.lock();
         try {
-            List<Byte> data = new ArrayList<>();
             for (Player player : players) {
                 player.acquire();
                 try {
-                    data.addAll(player.encode());
+                    player.encode(buffer);
                 } finally {
                     player.release();
                 }
             }
-            return data;
         } finally {
             lock.unlock();
         }

@@ -1,21 +1,27 @@
 package dev.glaeos.demonaday.commands;
 
 import dev.glaeos.demonaday.player.PlayerManager;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class Commands {
+public final class Commands {
 
-    public final List<Command> COMMANDS;
+    private Commands() {
 
-    public Commands(PlayerManager playerManager) {
-        COMMANDS = new ArrayList<>();
-        COMMANDS.add(new VerifyCommand(playerManager));
-        COMMANDS.add(new RejectCommand(playerManager));
-        COMMANDS.add(new AddCommand(playerManager));
-        COMMANDS.add(new RemoveCommand(playerManager));
-        COMMANDS.add(new PointsCommand(playerManager));
+    }
+
+    public static @NotNull List<Command> getCommands(@NotNull PlayerManager playerManager) {
+        List<Command> commands = new ArrayList<>();
+        commands.add(new VerifyCommand(playerManager));
+        commands.add(new RejectCommand(playerManager));
+        commands.add(new AddCommand(playerManager));
+        commands.add(new RemoveCommand(playerManager));
+        commands.add(new PointsCommand(playerManager));
+        commands.add(new CurrentStreakCommand(playerManager));
+        commands.add(new BestStreakCommand(playerManager));
+        return commands;
     }
 
 }

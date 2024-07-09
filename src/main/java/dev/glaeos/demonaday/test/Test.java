@@ -26,6 +26,7 @@ public class Test {
 
         System.out.println(DemonCalculator.calculatePoints(completions));
         System.out.println(DemonCalculator.findLongestStreak(completions));
+        System.out.println(DemonCalculator.findStreakIncluding(completions, (short) 20));
     }
 
 }

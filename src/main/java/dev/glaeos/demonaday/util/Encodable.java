@@ -1,12 +1,13 @@
 package dev.glaeos.demonaday.util;
 
+import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Collection;
+import java.nio.ByteBuffer;
 
 @FunctionalInterface
 public interface Encodable {
 
-    @NotNull Collection<Byte> encode();
+    void encode(@NotNull ByteBuf buffer);
 
 }

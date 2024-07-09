@@ -13,7 +13,7 @@ public class DemonCompletion implements Toggleable {
 
     public DemonCompletion(short dayOfYear, int levelId, @Nullable DemonDifficulty difficulty, boolean verified) {
         if (dayOfYear < 1 || dayOfYear > 366) {
-            throw new IllegalArgumentException("day of year cannot be < 1 or > 366");
+            throw new IllegalArgumentException("Day of year cannot be < 1 or > 366");
         }
 
         this.levelId = levelId;

@@ -1,6 +1,7 @@
 package dev.glaeos.demonaday.demons;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,7 +28,7 @@ public final class DemonCalculator {
             .collect(Collectors.toList());
     }
 
-    public static @NotNull Streak findLongestStreak(@NotNull Collection<DemonCompletion> completions) {
+    private static @NotNull List<Streak> findStreaks(@NotNull Collection<DemonCompletion> completions) {
         completions = sortCompletions(completions);
 
         List<Streak> streaks = new ArrayList<>();
@@ -53,8 +54,19 @@ public final class DemonCalculator {
         if (lastVisited != null) {
             streaks.add(new Streak(startDay, prevDayOfYear));
         }
-        System.out.println(streaks);
-        return streaks.stream().max(Comparator.comparingInt(Streak::getSize)).orElse(Streak.none());
+        return streaks;
+    }
+
+    public static @Nullable Streak findStreakIncluding(@NotNull Collection<DemonCompletion> completions, short dayOfYear) {
+        return findStreaks(completions).stream()
+            .filter(streak -> streak.startDay() <= dayOfYear && streak.endDay() >= dayOfYear)
+            .findFirst().orElse(null);
+    }
+
+    public static @Nullable Streak findLongestStreak(@NotNull Collection<DemonCompletion> completions) {
+        return findStreaks(completions).stream()
+            .max(Comparator.comparingInt(Streak::getSize))
+            .orElse(null);
     }
 
     public static int calculatePoints(@NotNull Collection<DemonCompletion> completions) {

@@ -1,6 +1,7 @@
 package dev.glaeos.demonaday.messages;
 
 import dev.glaeos.demonaday.demons.DemonCompletion;
+import dev.glaeos.demonaday.env.DiscordConstant;
 import dev.glaeos.demonaday.player.Player;
 import dev.glaeos.demonaday.player.PlayerManager;
 import dev.glaeos.demonaday.player.impl.DefaultPlayer;
@@ -15,13 +16,11 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Optional;
 
 public class DemonLogHandler implements MessageHandler {
 
     private static final @NotNull Logger LOGGER = LoggerFactory.getLogger(DemonLogHandler.class);
-    private static final @NotNull ZoneId TIMEZONE = ZoneId.of("America/Chicago");
     private static final long CHANNEL = 1191085366011244644L;
 
     private final @NotNull PlayerManager playerManager;
@@ -44,9 +43,9 @@ public class DemonLogHandler implements MessageHandler {
             return Mono.empty();
         }
 
+        LocalDate time = LocalDate.now(DiscordConstant.TIMEZONE);
         long userId = author.get().getId().asLong();
         int levelId;
-        LocalDate time = LocalDate.now(TIMEZONE);
 
         try {
             String content = message.getContent().stripLeading().toLowerCase();
@@ -77,7 +76,7 @@ public class DemonLogHandler implements MessageHandler {
                 return channel.createMessage(DemonLogResponse.failure(userId, DemonLogResponse.FailReason.MISSING_ATTACHMENTS, time, levelId));
             }
         } catch (Exception err) {
-            LOGGER.error("Demon log handler encountered exception during pre-player processing: " + err);
+            LOGGER.error("Demon log handler encountered exception during pre-player processing", err);
             return channel.createMessage(DemonLogResponse.error(userId));
         }
 
@@ -113,7 +112,7 @@ public class DemonLogHandler implements MessageHandler {
             }
             return channel.createMessage(DemonLogResponse.success(userId, time, levelId));
         } catch (Exception err) {
-            LOGGER.error("Demon log handler encountered exception during player processing: " + err);
+            LOGGER.error("Demon log handler encountered exception during player processing", err);
             return channel.createMessage(DemonLogResponse.error(userId));
         }
     }

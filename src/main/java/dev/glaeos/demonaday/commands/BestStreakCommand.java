@@ -1,6 +1,8 @@
 package dev.glaeos.demonaday.commands;
 
 import dev.glaeos.demonaday.demons.DemonCalculator;
+import dev.glaeos.demonaday.demons.Streak;
+import dev.glaeos.demonaday.messages.DemonLogResponse;
 import dev.glaeos.demonaday.player.Player;
 import dev.glaeos.demonaday.player.PlayerManager;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
@@ -11,26 +13,28 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PointsCommand implements Command {
+import java.time.LocalDate;
+
+public class BestStreakCommand implements Command {
 
     private static final @NotNull Logger LOGGER = LoggerFactory.getLogger(VerifyCommand.class);
 
     private final @NotNull PlayerManager playerManager;
 
-    public PointsCommand(@NotNull PlayerManager playerManager) {
+    public BestStreakCommand(@NotNull PlayerManager playerManager) {
         this.playerManager = playerManager;
     }
 
     private static final @NotNull ApplicationCommandRequest APP_COMMAND = ApplicationCommandRequest.builder()
-            .name("points")
-            .description("Calculates your current points for all your completions so far.")
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("user")
-                    .description("The user whose points you want to view.")
-                    .type(ApplicationCommandOption.Type.USER.getValue())
-                    .required(false)
-                    .build())
-            .build();
+        .name("bestStreak")
+        .description("Calculates a player's best streak.")
+        .addOption(ApplicationCommandOptionData.builder()
+            .name("user")
+            .description("The user whose best streak you want to view.")
+            .type(ApplicationCommandOption.Type.USER.getValue())
+            .required(false)
+            .build())
+        .build();
 
     @Override
     public @NotNull ApplicationCommandRequest getAppCommand() {
@@ -83,10 +87,15 @@ public class PointsCommand implements Command {
             String message;
             player.acquire();
             try {
-                if (isSelf) {
-                    message = "You currently have **" + DemonCalculator.calculatePoints(player.getCompletions()) + "** points. Keep it up!";
+                Streak streak = DemonCalculator.findLongestStreak(player.getCompletions());
+                if (streak == null) {
+                    message = "Could not find a streak. Has this player submitted any demon completions yet?";
+                } else if (isSelf) {
+                    String startDay = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2024, streak.startDay()));
+                    String endDay = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2024, streak.endDay()));
+                    message = "Your best streak was **" + DemonCalculator.findLongestStreak(player.getCompletions()) + "** days from **" + startDay + "** to **" + endDay + "**. Nice one!";
                 } else {
-                    message = "This player currently has **" + DemonCalculator.calculatePoints(player.getCompletions()) + "** points.";
+                    message = "This player is currently on a streak of **" + DemonCalculator.findLongestStreak(player.getCompletions()) + "** days.";
                 }
             } finally {
                 player.release();

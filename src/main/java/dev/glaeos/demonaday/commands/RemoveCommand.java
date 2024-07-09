@@ -1,6 +1,7 @@
 package dev.glaeos.demonaday.commands;
 
-import dev.glaeos.demonaday.env.DiscordConstants;
+import dev.glaeos.demonaday.demons.DemonDifficulty;
+import dev.glaeos.demonaday.env.DiscordConstant;
 import dev.glaeos.demonaday.demons.DemonCompletion;
 import dev.glaeos.demonaday.player.Player;
 import dev.glaeos.demonaday.player.PlayerManager;
@@ -12,6 +13,7 @@ import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.Channel;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,15 +21,15 @@ import java.time.LocalDate;
 
 public class RemoveCommand implements Command {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(VerifyCommand.class);
+    private static final @NotNull Logger LOGGER = LoggerFactory.getLogger(VerifyCommand.class);
 
-    private final PlayerManager playerManager;
+    private final @NotNull PlayerManager playerManager;
 
-    public RemoveCommand(PlayerManager playerManager) {
+    public RemoveCommand(@NotNull PlayerManager playerManager) {
         this.playerManager = playerManager;
     }
 
-    private static final ApplicationCommandRequest appCommand = ApplicationCommandRequest.builder()
+    private static final @NotNull ApplicationCommandRequest APP_COMMAND = ApplicationCommandRequest.builder()
             .name("remove")
             .description("ADMIN ONLY - Manually removes a demon completion.")
             .addOption(ApplicationCommandOptionData.builder()
@@ -51,95 +53,65 @@ public class RemoveCommand implements Command {
             .build();
 
     @Override
-    public ApplicationCommandRequest getAppCommand() {
-        return appCommand;
+    public @NotNull ApplicationCommandRequest getAppCommand() {
+        return APP_COMMAND;
     }
 
     @Override
-    public void handle(ChatInputInteractionEvent interaction) {
+    public void handle(@NotNull ChatInputInteractionEvent interaction) {
         try {
-            long userId = interaction.getInteraction().getUser().getId().asLong();
-            boolean authenticated = false;
-            for (long admin : DiscordConstants.ADMINS) {
-                if (admin == userId) {
-                    authenticated = true;
-                    break;
-                }
-            }
-            if (!authenticated) {
-                interaction.reply("**You do not have permission to use this command.**").withEphemeral(true).subscribe();
+            if (!CommandHelper.authenticate(interaction)) {
                 return;
             }
 
-            if (interaction.getOption("user").isEmpty()) {
-                interaction.reply("Missing user.").withEphemeral(true).subscribe();
-                return;
-            }
-            if (interaction.getOption("user").get().getValue().isEmpty()) {
-                interaction.reply("Missing user.").withEphemeral(true).subscribe();
-                return;
-            }
-            User commandUser = interaction.getOption("user").get().getValue().get().asUser().block();
-            if (commandUser == null) {
-                interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
+            User user = CommandHelper.getUserOption(interaction);
+            if (user == null) {
                 return;
             }
 
-            Player player;
-            playerManager.acquire();
-            try {
-                if (!playerManager.hasPlayer(commandUser.getId().asLong())) {
-                    playerManager.release();
-                    interaction.reply("Could not find player for given user.").withEphemeral(true).subscribe();
-                    return;
-                }
-
-                player = playerManager.getPlayer(commandUser.getId().asLong());
-                if (player == null) {
-                    interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
-                    return;
-                }
-            } finally {
-                playerManager.release();
-            }
-
-            if (interaction.getOption("level").isEmpty()) {
-                interaction.reply("Missing level ID.").withEphemeral(true).subscribe();
-                return;
-            }
-            if (interaction.getOption("level").get().getValue().isEmpty()) {
-                interaction.reply("Missing level ID.").withEphemeral(true).subscribe();
-                return;
-            }
-            int levelId = (int) interaction.getOption("level").get().getValue().get().asLong();
-            if (levelId < 1 || levelId > 120000000) {
-                interaction.reply("Invalid level ID. Should be between 1 and 120 million inclusive.").withEphemeral(true).subscribe();
+            Short dayOfYear = CommandHelper.getDayOption(interaction);
+            if (dayOfYear == null) {
                 return;
             }
 
-            String reason;
-            if (interaction.getOption("reason").isEmpty()) {
-                reason = "No reason given.";
-            } else if (interaction.getOption("reason").get().getValue().isEmpty()) {
-                interaction.reply("Reason given but empty.").withEphemeral(true).subscribe();
+            Integer levelId = CommandHelper.getLevelOption(interaction);
+            if (levelId == null) {
                 return;
-            } else {
-                reason = interaction.getOption("reason").get().getValue().get().asString();
+            }
+
+            DemonDifficulty difficulty = CommandHelper.getDifficultyOption(interaction);
+            if (difficulty == null) {
+                return;
+            }
+
+            String reason = CommandHelper.getReasonOption(interaction);
+            if (reason == null) {
+                return;
+            }
+
+            Player player = CommandHelper.getPlayer(interaction, playerManager, user);
+            if (player == null) {
+                return;
             }
 
             player.acquire();
             try {
                 if (!player.hasCompleted(levelId)) {
-                    player.release();
                     interaction.reply("Player has not submitted a completion with the given level ID.").withEphemeral(true).subscribe();
                     return;
                 }
+
                 DemonCompletion completion = player.getCompletion(levelId);
+                if (completion == null) {
+                    CommandHelper.replyWithError(interaction);
+                    return;
+                }
+
                 player.removeCompletion(completion);
                 player.release();
                 interaction.reply("Player's record was successfully removed.").subscribe();
 
-                Channel verifyChannel = interaction.getClient().getChannelById(Snowflake.of(DiscordConstants.VERIFY_CHANNEL)).block();
+                Channel verifyChannel = interaction.getClient().getChannelById(Snowflake.of(DiscordConstant.VERIFY_CHANNEL)).block();
                 if (verifyChannel == null) {
                     LOGGER.error("Failed to fetch channel for verification logs.");
                     return;
@@ -150,7 +122,7 @@ public class RemoveCommand implements Command {
                 player.release();
             }
         } catch (Exception err) {
-            LOGGER.error("Remove command encountered exception: " + err);
+            LOGGER.error("Remove command encountered exception", err);
             interaction.reply("Something went wrong processing your request. Get in touch with Glaeos").withEphemeral(true).subscribe();
         }
     }
