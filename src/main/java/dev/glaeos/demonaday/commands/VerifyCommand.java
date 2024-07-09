@@ -1,12 +1,11 @@
 package dev.glaeos.demonaday.commands;
 
-import dev.glaeos.demonaday.DiscordConstants;
-import dev.glaeos.demonaday.Env;
+import dev.glaeos.demonaday.env.DiscordConstants;
 import dev.glaeos.demonaday.demons.DemonCompletion;
 import dev.glaeos.demonaday.demons.DemonDifficulty;
-import dev.glaeos.demonaday.demons.Player;
-import dev.glaeos.demonaday.demons.PlayerManager;
-import dev.glaeos.demonaday.responses.DemonLogResponse;
+import dev.glaeos.demonaday.player.Player;
+import dev.glaeos.demonaday.player.PlayerManager;
+import dev.glaeos.demonaday.messages.DemonLogResponse;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
@@ -18,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
-import java.util.function.Function;
 
 public class VerifyCommand implements Command {
 
@@ -87,14 +85,24 @@ public class VerifyCommand implements Command {
                 interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
                 return;
             }
+
+            Player player;
             playerManager.acquire();
-            if (!playerManager.hasPlayer(commandUser.getId().asLong())) {
+            try {
+                if (!playerManager.hasPlayer(commandUser.getId().asLong())) {
+                    playerManager.release();
+                    interaction.reply("Could not find player for given user.").withEphemeral(true).subscribe();
+                    return;
+                }
+
+                player = playerManager.getPlayer(commandUser.getId().asLong());
+                if (player == null) {
+                    interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
+                    return;
+                }
+            } finally {
                 playerManager.release();
-                interaction.reply("Could not find player for given user.").withEphemeral(true).subscribe();
-                return;
             }
-            Player player = playerManager.getPlayer(commandUser.getId().asLong());
-            playerManager.release();
 
             if (interaction.getOption("level").isEmpty()) {
                 interaction.reply("Missing level ID.").withEphemeral(true).subscribe();
@@ -126,30 +134,37 @@ public class VerifyCommand implements Command {
             DemonDifficulty difficulty = DemonDifficulty.valueOf(difficultyString);
 
             player.acquire();
-            if (!player.hasCompleted(levelId)) {
-                player.release();
-                interaction.reply("Player has not logged a completion with the given level ID.").withEphemeral(true).subscribe();
-                return;
-            }
-            DemonCompletion completion = player.getCompletion(levelId);
-            if (completion.isVerified()) {
-                player.release();
-                interaction.reply("Player's completion is already verified.").withEphemeral(true).subscribe();
-                return;
-            }
-            completion.setDifficulty(difficulty);
-            completion.verify();
-            player.release();
-            interaction.reply("Player's record was successfully verified.").subscribe();
+            try {
+                if (!player.hasCompleted(levelId)) {
+                    interaction.reply("Player has not logged a completion with the given level ID.").withEphemeral(true).subscribe();
+                    return;
+                }
 
-            Channel verifyChannel = interaction.getClient().getChannelById(Snowflake.of(DiscordConstants.VERIFY_CHANNEL)).block();
-            if (verifyChannel == null) {
-                LOGGER.error("Failed to fetch channel for verification logs.");
-                return;
-            }
-            String time = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2000, completion.getDayOfYear()));
-            verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + levelId + "** has been verified with a demon difficulty of **" + completion.getDifficulty().name().toLowerCase() + "**! <:verified:1192248314972872704>").subscribe();
+                DemonCompletion completion = player.getCompletion(levelId);
+                if (completion == null) {
+                    interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
+                    return;
+                }
+                if (completion.isEnabled()) {
+                    player.release();
+                    interaction.reply("Player's completion is already verified.").withEphemeral(true).subscribe();
+                    return;
+                }
 
+                completion.setDifficulty(difficulty);
+                completion.enable();
+                interaction.reply("Player's record was successfully verified.").subscribe();
+
+                Channel verifyChannel = interaction.getClient().getChannelById(Snowflake.of(DiscordConstants.VERIFY_CHANNEL)).block();
+                if (verifyChannel == null) {
+                    LOGGER.error("Failed to fetch channel for verification logs.");
+                    return;
+                }
+                String time = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2000, completion.getDayOfYear()));
+                verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + levelId + "** has been verified with a demon difficulty of **" + difficulty.name().toLowerCase() + "**! <:verified:1192248314972872704>").subscribe();
+            } finally {
+                player.release();
+            }
         } catch (Exception err) {
             LOGGER.error("Verify command encountered exception: " + err);
             interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();

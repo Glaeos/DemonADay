@@ -1,11 +1,12 @@
 package dev.glaeos.demonaday.commands;
 
-import dev.glaeos.demonaday.DiscordConstants;
+import dev.glaeos.demonaday.env.DiscordConstants;
 import dev.glaeos.demonaday.demons.DemonCompletion;
 import dev.glaeos.demonaday.demons.DemonDifficulty;
-import dev.glaeos.demonaday.demons.Player;
-import dev.glaeos.demonaday.demons.PlayerManager;
-import dev.glaeos.demonaday.responses.DemonLogResponse;
+import dev.glaeos.demonaday.player.Player;
+import dev.glaeos.demonaday.player.PlayerManager;
+import dev.glaeos.demonaday.messages.DemonLogResponse;
+import dev.glaeos.demonaday.player.impl.DefaultPlayer;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
@@ -91,12 +92,22 @@ public class AddCommand implements Command {
                 interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
                 return;
             }
+
+            Player player;
             playerManager.acquire();
-            if (!playerManager.hasPlayer(commandUser.getId().asLong())) {
-                playerManager.addPlayer(new Player(commandUser.getId().asLong()));
+            try {
+                if (!playerManager.hasPlayer(commandUser.getId().asLong())) {
+                    playerManager.addPlayer(new DefaultPlayer(commandUser.getId().asLong()));
+                }
+                player = playerManager.getPlayer(commandUser.getId().asLong());
+
+                if (player == null) {
+                    interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
+                    return;
+                }
+            } finally {
+                playerManager.release();
             }
-            Player player = playerManager.getPlayer(commandUser.getId().asLong());
-            playerManager.release();
 
             if (interaction.getOption("day").isEmpty()) {
                 interaction.reply("Missing day.").withEphemeral(true).subscribe();
@@ -162,7 +173,7 @@ public class AddCommand implements Command {
                 LOGGER.error("Failed to fetch channel for verification logs.");
                 return;
             }
-            verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + levelId + "** has been added and verified with a demon difficulty of **" + completion.getDifficulty().name().toLowerCase() + "**! <:verified:1192248314972872704>").subscribe();
+            verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + levelId + "** has been added and verified with a demon difficulty of **" + difficulty.name().toLowerCase() + "**! <:verified:1192248314972872704>").subscribe();
 
         } catch (Exception err) {
             LOGGER.error("Add command encountered exception: " + err);

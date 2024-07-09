@@ -1,7 +1,8 @@
 package dev.glaeos.demonaday.commands;
 
-import dev.glaeos.demonaday.demons.Player;
-import dev.glaeos.demonaday.demons.PlayerManager;
+import dev.glaeos.demonaday.demons.DemonCalculator;
+import dev.glaeos.demonaday.player.Player;
+import dev.glaeos.demonaday.player.PlayerManager;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
@@ -54,29 +55,41 @@ public class PointsCommand implements Command {
                 commandUserId = interaction.getOption("user").get().getValue().get().asUser().block().getId().asLong();
             }
 
+            Player player;
             playerManager.acquire();
-            if (!playerManager.hasPlayer(commandUserId)) {
-                playerManager.release();
-                String failedMessage;
-                if (isSelf) {
-                    failedMessage = "Could not find your player. Have you submitted any demon completions yet?";
-                } else {
-                    failedMessage = "Could not find the player for the given user. Have they submitted any demon completions yet?";
+            try {
+                if (!playerManager.hasPlayer(commandUserId)) {
+                    playerManager.release();
+                    String failedMessage;
+                    if (isSelf) {
+                        failedMessage = "Could not find your player. Have you submitted any demon completions yet?";
+                    } else {
+                        failedMessage = "Could not find the player for the given user. Have they submitted any demon completions yet?";
+                    }
+                    interaction.reply(failedMessage).subscribe();
+                    return;
                 }
-                interaction.reply(failedMessage).subscribe();
-                return;
-            }
-            Player player = playerManager.getPlayer(commandUserId);
-            playerManager.release();
 
-            player.acquire();
-            String message;
-            if (isSelf) {
-                message = "You currently have **" + player.calculatePoints() + "** points. Keep it up!";
-            } else {
-                message = "This player currently has **" + player.calculatePoints() + "** points.";
+                player = playerManager.getPlayer(commandUserId);
+                if (player == null) {
+                    interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
+                    return;
+                }
+            } finally {
+                playerManager.release();
             }
-            player.release();
+
+            String message;
+            player.acquire();
+            try {
+                if (isSelf) {
+                    message = "You currently have **" + DemonCalculator.calculatePoints(player.getCompletions()) + "** points. Keep it up!";
+                } else {
+                    message = "This player currently has **" + DemonCalculator.calculatePoints(player.getCompletions()) + "** points.";
+                }
+            } finally {
+                player.release();
+            }
             interaction.reply(message).subscribe();
         } catch (Exception err) {
             LOGGER.error("Points command encountered exception: " + err);

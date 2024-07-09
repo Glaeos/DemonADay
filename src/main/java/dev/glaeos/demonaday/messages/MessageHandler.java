@@ -10,6 +10,6 @@ public interface MessageHandler {
 
     long getChannelId();
 
-    Publisher<?> handle(@Nullable MessageChannel channel, @NotNull Message message);
+    @NotNull Publisher<?> handle(@Nullable MessageChannel channel, @NotNull Message message);
 
 }

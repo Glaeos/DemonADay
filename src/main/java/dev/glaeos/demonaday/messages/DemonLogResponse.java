@@ -1,4 +1,4 @@
-package dev.glaeos.demonaday.responses;
+package dev.glaeos.demonaday.messages;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -22,10 +22,7 @@ public class DemonLogResponse {
         return "<@" + userId + ">";
     }
 
-    public static @NotNull String failure(long userId, @NotNull LocalDate time, @Nullable Integer levelId, @NotNull DemonLogFailureReason reason) {
-        checkNotNull(reason);
-        checkNotNull(time);
-
+    public static @NotNull String failure(long userId, @NotNull FailReason reason, @NotNull LocalDate time, @Nullable Integer levelId) {
         String response;
         switch (reason) {
             case MISSING_LEVEL_ID -> response = "Message appears to be missing a valid level ID. Get in touch with Glaeos or Trubactor.";
@@ -46,6 +43,17 @@ public class DemonLogResponse {
 
     public static @NotNull String error(long userId) {
         return formatPing(userId) + " Something went wrong processing your request. Get in touch with Glaeos.";
+    }
+
+    public enum FailReason {
+
+        MISSING_LEVEL_ID,
+        INVALID_LEVEL_ID,
+        MISSING_ATTACHMENTS,
+        PLAYER_DISABLED,
+        ALREADY_COMPLETED,
+        ALREADY_SUBMITTED_TODAY;
+
     }
 
 }

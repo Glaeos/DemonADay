@@ -1,18 +1,25 @@
-package dev.glaeos.demonaday.serialization;
+package dev.glaeos.demonaday.util;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Scanner;
 
-public class PrimitiveSerializer {
+public final class PrimitiveSerializer {
 
-    public static int readVarInt(SimpleBuffer buffer) {
+    private PrimitiveSerializer() {
+
+    }
+
+    public static int readVarInt(@NotNull ByteBuffer buffer) {
         int value = 0;
         int size = 0;
         int b;
 
-        while (((b = buffer.next()) & 0x80) == 0x80) {
+        while (((b = buffer.get()) & 0x80) == 0x80) {
             value |= (b & 0x7F) << (size++ * 7);
             if (size > 5) {
                 throw new IllegalArgumentException("VarInt is too big");
@@ -21,7 +28,7 @@ public class PrimitiveSerializer {
         return value | ((b & 0x7F) << (size * 7));
     }
 
-    public static void writeVarInt(List<Byte> dst, int data) {
+    public static void writeVarInt(@NotNull List<Byte> dst, int data) {
         do {
             byte temp = (byte) (data & 0x7F);
             data >>>= 7;
@@ -32,12 +39,12 @@ public class PrimitiveSerializer {
         } while (data != 0);
     }
 
-    public static long readVarLong(SimpleBuffer buffer) {
+    public static long readVarLong(@NotNull ByteBuffer buffer) {
         long value = 0L;
         int size = 0;
         long b;
 
-        while (((b = buffer.next()) & 0x80) == 0x80) {
+        while (((b = buffer.get()) & 0x80) == 0x80) {
             value |= (b & 0x7F) << (size++ * 7);
             if (size > 9) {
                 return value | ((b & 0x7FL) << (size * 7));
@@ -47,7 +54,7 @@ public class PrimitiveSerializer {
         return value | ((b & 0x7FL) << (size * 7));
     }
 
-    public static void writeVarLong(List<Byte> dst, long data) {
+    public static void writeVarLong(@NotNull List<Byte> dst, long data) {
         do {
             byte temp = (byte) (data & 0x7F);
             data >>>= 7;

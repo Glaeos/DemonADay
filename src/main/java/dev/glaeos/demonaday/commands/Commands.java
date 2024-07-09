@@ -1,6 +1,6 @@
 package dev.glaeos.demonaday.commands;
 
-import dev.glaeos.demonaday.demons.PlayerManager;
+import dev.glaeos.demonaday.player.PlayerManager;
 
 import java.util.ArrayList;
 import java.util.List;

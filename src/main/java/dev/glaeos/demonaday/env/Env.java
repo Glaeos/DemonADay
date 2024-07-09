@@ -1,4 +1,4 @@
-package dev.glaeos.demonaday;
+package dev.glaeos.demonaday.env;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -33,10 +33,10 @@ public class Env {
 
         reader.close();
         if (tokenLine == null) {
-            throw new RuntimeException(".env does not contain token");
+            throw new IllegalArgumentException(".env does not contain token");
         }
         if (guildLine == null) {
-            throw new RuntimeException(".env does not contain guild");
+            throw new IllegalArgumentException(".env does not contain guild");
         }
         TOKEN = tokenLine.substring(6);
         GUILD = Long.parseLong(guildLine.substring(6));

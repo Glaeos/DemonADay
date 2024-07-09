@@ -1,11 +1,11 @@
 package dev.glaeos.demonaday.messages;
 
 import dev.glaeos.demonaday.demons.DemonCompletion;
-import dev.glaeos.demonaday.demons.Player;
-import dev.glaeos.demonaday.demons.PlayerManager;
-import dev.glaeos.demonaday.responses.DemonLogFailureReason;
-import dev.glaeos.demonaday.responses.DemonLogResponse;
+import dev.glaeos.demonaday.player.Player;
+import dev.glaeos.demonaday.player.PlayerManager;
+import dev.glaeos.demonaday.player.impl.DefaultPlayer;
 import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.MessageChannel;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -16,19 +16,17 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-
-import static com.google.common.base.Preconditions.checkNotNull;
+import java.util.Optional;
 
 public class DemonLogHandler implements MessageHandler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DemonLogHandler.class);
-
+    private static final @NotNull Logger LOGGER = LoggerFactory.getLogger(DemonLogHandler.class);
+    private static final @NotNull ZoneId TIMEZONE = ZoneId.of("America/Chicago");
     private static final long CHANNEL = 1191085366011244644L;
 
-    private final PlayerManager playerManager;
+    private final @NotNull PlayerManager playerManager;
 
     public DemonLogHandler(@NotNull PlayerManager playerManager) {
-        checkNotNull(playerManager);
         this.playerManager = playerManager;
     }
 
@@ -36,17 +34,19 @@ public class DemonLogHandler implements MessageHandler {
         return CHANNEL;
     }
 
-    public Publisher<?> handle(@Nullable MessageChannel channel, @NotNull Message message) {
+    public @NotNull Publisher<?> handle(@Nullable MessageChannel channel, @NotNull Message message) {
         if (channel == null) {
             return Mono.empty();
         }
-        if (message.getAuthor().isEmpty()) {
+
+        Optional<User> author = message.getAuthor();
+        if (author.isEmpty()) {
             return Mono.empty();
         }
-        long userId = message.getAuthor().get().getId().asLong();
+
+        long userId = author.get().getId().asLong();
         int levelId;
-        LocalDate time = LocalDate.now(ZoneId.of("America/Chicago"));
-        ;
+        LocalDate time = LocalDate.now(TIMEZONE);
 
         try {
             String content = message.getContent().stripLeading().toLowerCase();
@@ -67,14 +67,14 @@ public class DemonLogHandler implements MessageHandler {
             try {
                 levelId = Integer.parseInt(content);
             } catch (NumberFormatException err) {
-                return channel.createMessage(DemonLogResponse.failure(userId, time, null, DemonLogFailureReason.MISSING_LEVEL_ID));
+                return channel.createMessage(DemonLogResponse.failure(userId, DemonLogResponse.FailReason.MISSING_LEVEL_ID, time, null));
             }
 
             if (levelId < 1 || levelId > 120000000) {
-                return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.INVALID_LEVEL_ID));
+                return channel.createMessage(DemonLogResponse.failure(userId, DemonLogResponse.FailReason.INVALID_LEVEL_ID, time, levelId));
             }
             if (message.getAttachments().size() < 2) {
-                return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.MISSING_ATTACHMENTS));
+                return channel.createMessage(DemonLogResponse.failure(userId, DemonLogResponse.FailReason.MISSING_ATTACHMENTS, time, levelId));
             }
         } catch (Exception err) {
             LOGGER.error("Demon log handler encountered exception during pre-player processing: " + err);
@@ -86,26 +86,26 @@ public class DemonLogHandler implements MessageHandler {
             playerManager.acquire();
             try {
                 if (!playerManager.hasPlayer(userId)) {
-                    playerManager.addPlayer(new Player(userId));
+                    playerManager.addPlayer(new DefaultPlayer(userId));
                 }
                 player = playerManager.getPlayer(userId);
+                if (player == null) {
+                    return channel.createMessage(DemonLogResponse.error(userId));
+                }
             } finally {
                 playerManager.release();
             }
-            player.acquire();
 
+            player.acquire();
             try {
-                if (player.isDisabled()) {
-                    player.release();
-                    return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.PLAYER_DISABLED));
+                if (!player.isEnabled()) {
+                    return channel.createMessage(DemonLogResponse.failure(userId, DemonLogResponse.FailReason.PLAYER_DISABLED, time, levelId));
                 }
                 if (player.hasCompleted(levelId)) {
-                    player.release();
-                    return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.ALREADY_COMPLETED));
+                    return channel.createMessage(DemonLogResponse.failure(userId, DemonLogResponse.FailReason.ALREADY_COMPLETED, time, levelId));
                 }
                 if (player.hasCompletionOn((short) time.getDayOfYear())) {
-                    player.release();
-                    return channel.createMessage(DemonLogResponse.failure(userId, time, levelId, DemonLogFailureReason.ALREADY_SUBMITTED_TODAY));
+                    return channel.createMessage(DemonLogResponse.failure(userId, DemonLogResponse.FailReason.ALREADY_SUBMITTED_TODAY, time, levelId));
                 }
                 player.addCompletion(new DemonCompletion((short) time.getDayOfYear(), levelId, null, false));
             } finally {

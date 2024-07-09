@@ -1,11 +1,10 @@
 package dev.glaeos.demonaday.commands;
 
-import dev.glaeos.demonaday.DiscordConstants;
+import dev.glaeos.demonaday.env.DiscordConstants;
 import dev.glaeos.demonaday.demons.DemonCompletion;
-import dev.glaeos.demonaday.demons.DemonDifficulty;
-import dev.glaeos.demonaday.demons.Player;
-import dev.glaeos.demonaday.demons.PlayerManager;
-import dev.glaeos.demonaday.responses.DemonLogResponse;
+import dev.glaeos.demonaday.player.Player;
+import dev.glaeos.demonaday.player.PlayerManager;
+import dev.glaeos.demonaday.messages.DemonLogResponse;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
@@ -85,14 +84,24 @@ public class RemoveCommand implements Command {
                 interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
                 return;
             }
+
+            Player player;
             playerManager.acquire();
-            if (!playerManager.hasPlayer(commandUser.getId().asLong())) {
+            try {
+                if (!playerManager.hasPlayer(commandUser.getId().asLong())) {
+                    playerManager.release();
+                    interaction.reply("Could not find player for given user.").withEphemeral(true).subscribe();
+                    return;
+                }
+
+                player = playerManager.getPlayer(commandUser.getId().asLong());
+                if (player == null) {
+                    interaction.reply("Something went wrong processing your request. Get in touch with Glaeos.").subscribe();
+                    return;
+                }
+            } finally {
                 playerManager.release();
-                interaction.reply("Could not find player for given user.").withEphemeral(true).subscribe();
-                return;
             }
-            Player player = playerManager.getPlayer(commandUser.getId().asLong());
-            playerManager.release();
 
             if (interaction.getOption("level").isEmpty()) {
                 interaction.reply("Missing level ID.").withEphemeral(true).subscribe();
@@ -119,24 +128,27 @@ public class RemoveCommand implements Command {
             }
 
             player.acquire();
-            if (!player.hasCompleted(levelId)) {
+            try {
+                if (!player.hasCompleted(levelId)) {
+                    player.release();
+                    interaction.reply("Player has not submitted a completion with the given level ID.").withEphemeral(true).subscribe();
+                    return;
+                }
+                DemonCompletion completion = player.getCompletion(levelId);
+                player.removeCompletion(completion);
                 player.release();
-                interaction.reply("Player has not submitted a completion with the given level ID.").withEphemeral(true).subscribe();
-                return;
-            }
-            DemonCompletion completion = player.getCompletion(levelId);
-            player.removeCompletion(completion);
-            player.release();
-            interaction.reply("Player's record was successfully removed.").subscribe();
+                interaction.reply("Player's record was successfully removed.").subscribe();
 
-            Channel verifyChannel = interaction.getClient().getChannelById(Snowflake.of(DiscordConstants.VERIFY_CHANNEL)).block();
-            if (verifyChannel == null) {
-                LOGGER.error("Failed to fetch channel for verification logs.");
-                return;
+                Channel verifyChannel = interaction.getClient().getChannelById(Snowflake.of(DiscordConstants.VERIFY_CHANNEL)).block();
+                if (verifyChannel == null) {
+                    LOGGER.error("Failed to fetch channel for verification logs.");
+                    return;
+                }
+                String time = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2000, completion.getDayOfYear()));
+                verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + completion.getLevelId() + "** has been removed. Reason: \"***" + reason + "***\". <:rejected:1192248311831343244>").subscribe();
+            } finally {
+                player.release();
             }
-            String time = DemonLogResponse.formatDayOfYear(LocalDate.ofYearDay(2000, completion.getDayOfYear()));
-            verifyChannel.getRestChannel().createMessage("<@" + player.getUserId() + "> Your record for **" + time + "** as the level with ID **" + completion.getLevelId() + "** has been removed. Reason: \"***" + reason + "***\". <:rejected:1192248311831343244>").subscribe();
-
         } catch (Exception err) {
             LOGGER.error("Remove command encountered exception: " + err);
             interaction.reply("Something went wrong processing your request. Get in touch with Glaeos").withEphemeral(true).subscribe();

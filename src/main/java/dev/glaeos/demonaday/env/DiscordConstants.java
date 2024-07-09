@@ -1,4 +1,4 @@
-package dev.glaeos.demonaday;
+package dev.glaeos.demonaday.env;
 
 public class DiscordConstants {
 

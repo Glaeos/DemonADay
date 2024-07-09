@@ -12,6 +12,8 @@ import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.gateway.intent.Intent;
 import discord4j.gateway.intent.IntentSet;
 import discord4j.rest.interaction.GuildCommandRegistrar;
+import org.checkerframework.checker.units.qual.N;
+import org.jetbrains.annotations.Blocking;
 import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -28,9 +30,26 @@ public class DiscordBot {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DiscordBot.class);
 
-    protected DiscordBot(@NotNull String token, long guildId,
-                         @NotNull List<Command> commands, @NotNull List<MessageHandler> messageHandlers) {
+    private final @NotNull String token;
+    private final long guildId;
+    private final @NotNull List<Command> commands;
+    private final @NotNull List<MessageHandler> messageHandlers;
+    private boolean started;
 
+    public DiscordBot(@NotNull String token, long guildId, @NotNull List<Command> commands, @NotNull List<MessageHandler> messageHandlers) {
+        this.token = token;
+        this.guildId = guildId;
+        this.commands = commands;
+        this.messageHandlers = messageHandlers;
+        this.started = false;
+    }
+
+    @Blocking
+    public void start() {
+        if (started) {
+            throw new IllegalStateException("Discord bot has already been started");
+        }
+        started = true;
 
         DiscordClient client = DiscordClient.create(token);
         client.gateway().setEnabledIntents(IntentSet.of(Intent.MESSAGE_CONTENT));
@@ -68,13 +87,6 @@ public class DiscordBot {
                 return Mono.empty();
             }
         }).blockLast();
-    }
-
-    public static DiscordBot start(@NotNull String token, long guildId,
-                                   @NotNull List<Command> commands, @NotNull List<MessageHandler> messageHandlers) {
-        checkNotNull(token);
-        checkNotNull(commands);
-        return new DiscordBot(token, guildId, commands, messageHandlers);
     }
 
 }

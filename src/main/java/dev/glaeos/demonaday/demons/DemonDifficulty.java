@@ -8,8 +8,4 @@ public enum DemonDifficulty {
     INSANE,
     EXTREME;
 
-    int getPoints() {
-        return (this.ordinal()+1) * 2;
-    }
-
 }

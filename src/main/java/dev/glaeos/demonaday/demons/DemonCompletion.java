@@ -1,33 +1,39 @@
 package dev.glaeos.demonaday.demons;
 
+import dev.glaeos.demonaday.util.Toggleable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
-public class DemonCompletion {
-
-    private final short dayOfYear;
+public class DemonCompletion implements Toggleable {
 
     private final int levelId;
-
-    private @Nullable DemonDifficulty difficulty;
-
+    private final short dayOfYear;
     private boolean verified;
+    private @Nullable DemonDifficulty difficulty;
 
     public DemonCompletion(short dayOfYear, int levelId, @Nullable DemonDifficulty difficulty, boolean verified) {
         if (dayOfYear < 1 || dayOfYear > 366) {
             throw new IllegalArgumentException("day of year cannot be < 1 or > 366");
         }
 
-        this.dayOfYear = dayOfYear;
         this.levelId = levelId;
-        this.difficulty = difficulty;
+        this.dayOfYear = dayOfYear;
         this.verified = verified;
+        this.difficulty = difficulty;
     }
 
-    public String toString() {
+    public @NotNull String toString() {
         return "DemonCompletion{dayOfYear=" + dayOfYear + ", levelId=" + levelId + ", difficulty=" + difficulty + ", verified=" + verified + "}";
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return verified;
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        verified = enabled;
     }
 
     public short getDayOfYear() {
@@ -43,20 +49,7 @@ public class DemonCompletion {
     }
 
     public void setDifficulty(@NotNull DemonDifficulty difficulty) {
-        checkNotNull(difficulty);
         this.difficulty = difficulty;
-    }
-
-    public boolean isVerified() {
-        return verified;
-    }
-
-    public void verify() {
-        verified = true;
-    }
-
-    public void reject() {
-        verified = false;
     }
 
 }
